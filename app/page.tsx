@@ -1,0 +1,271 @@
+'use client';
+
+import { useState, useCallback, useEffect } from 'react';
+import { BouquetRose, BouquetData, RoseType, HistoryEntry } from '@/types/bouquet';
+import { ROSES } from '@/lib/roseData';
+import Header from '@/components/Header';
+import RoseLibrary from '@/components/RoseLibrary';
+import BouquetCanvas from '@/components/BouquetCanvas';
+import PropertiesPanel from '@/components/PropertiesPanel';
+import ShareModal from '@/components/ShareModal';
+
+let idCounter = 0;
+const generateId = () => `rose-${Date.now()}-${++idCounter}`;
+
+const MAX_HISTORY = 30;
+
+export default function HomePage() {
+  const [roses, setRoses] = useState<BouquetRose[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
+
+  // Save state to history before mutations
+  const saveHistory = useCallback(
+    (currentRoses: BouquetRose[], currentMessage: string) => {
+      setHistory((prev) => [
+        ...prev.slice(-MAX_HISTORY + 1),
+        { roses: currentRoses, message: currentMessage },
+      ]);
+    },
+    []
+  );
+
+  const addRose = useCallback(
+    (roseType: RoseType, x = 45 + Math.random() * 10, y = 40 + Math.random() * 20) => {
+      setRoses((prev) => {
+        saveHistory(prev, message);
+        const maxZ = prev.length > 0 ? Math.max(...prev.map((r) => r.zIndex)) : 0;
+        const newRose: BouquetRose = {
+          id: generateId(),
+          roseTypeId: roseType.id,
+          x,
+          y,
+          scale: 1,
+          rotation: Math.random() * 30 - 15,
+          zIndex: maxZ + 1,
+        };
+        return [...prev, newRose];
+      });
+    },
+    [message, saveHistory]
+  );
+
+  const handleDragStart = useCallback((e: React.DragEvent, rose: RoseType) => {
+    e.dataTransfer.setData('roseTypeId', rose.id);
+  }, []);
+
+  const handleDrop = useCallback(
+    (roseTypeId: string, x: number, y: number) => {
+      const roseType = ROSES.find((r) => r.id === roseTypeId);
+      if (roseType) addRose(roseType, x, y);
+    },
+    [addRose]
+  );
+
+  const handleMove = useCallback((id: string, x: number, y: number) => {
+    setRoses((prev) => prev.map((r) => (r.id === id ? { ...r, x, y } : r)));
+  }, []);
+
+  const handleSelect = useCallback((id: string | null) => {
+    setSelectedId(id);
+    if (id) setIsPropertiesOpen(true);
+  }, []);
+
+  const handleScaleChange = useCallback(
+    (scale: number) => {
+      if (!selectedId) return;
+      setRoses((prev) => prev.map((r) => (r.id === selectedId ? { ...r, scale } : r)));
+    },
+    [selectedId]
+  );
+
+  const handleRotationChange = useCallback(
+    (rotation: number) => {
+      if (!selectedId) return;
+      setRoses((prev) => prev.map((r) => (r.id === selectedId ? { ...r, rotation } : r)));
+    },
+    [selectedId]
+  );
+
+  const handleBringForward = useCallback(() => {
+    if (!selectedId) return;
+    setRoses((prev) => {
+      const rose = prev.find((r) => r.id === selectedId);
+      if (!rose) return prev;
+      const maxZ = Math.max(...prev.map((r) => r.zIndex));
+      return prev.map((r) => (r.id === selectedId ? { ...r, zIndex: maxZ + 1 } : r));
+    });
+  }, [selectedId]);
+
+  const handleSendBackward = useCallback(() => {
+    if (!selectedId) return;
+    setRoses((prev) => {
+      const rose = prev.find((r) => r.id === selectedId);
+      if (!rose) return prev;
+      const minZ = Math.min(...prev.map((r) => r.zIndex));
+      return prev.map((r) => (r.id === selectedId ? { ...r, zIndex: minZ - 1 } : r));
+    });
+  }, [selectedId]);
+
+  const handleDelete = useCallback(() => {
+    if (!selectedId) return;
+    setRoses((prev) => {
+      saveHistory(prev, message);
+      return prev.filter((r) => r.id !== selectedId);
+    });
+    setSelectedId(null);
+  }, [selectedId, message, saveHistory]);
+
+  const handleUndo = useCallback(() => {
+    setHistory((prev) => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      setRoses(last.roses);
+      setMessage(last.message);
+      setSelectedId(null);
+      return prev.slice(0, -1);
+    });
+  }, []);
+
+  const handleClearAll = useCallback(() => {
+    setRoses((prev) => {
+      saveHistory(prev, message);
+      return [];
+    });
+    setSelectedId(null);
+  }, [message, saveHistory]);
+
+  const selectedRose = roses.find((r) => r.id === selectedId) || null;
+  const selectedRoseType = selectedRose ? ROSES.find((r) => r.id === selectedRose.roseTypeId) || null : null;
+  const usedColors = Array.from(new Set(roses.map((r) => r.roseTypeId)))
+    .map((id) => ROSES.find((r) => r.id === id)?.color || '')
+    .filter(Boolean);
+
+  const bouquetData: BouquetData = { roses, message };
+
+  // Save to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('rosery-bouquet', JSON.stringify({ roses, message }));
+    } catch {
+      // ignore storage errors
+    }
+  }, [roses, message]);
+
+  // Restore from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('rosery-bouquet');
+      if (saved) {
+        const { roses: savedRoses, message: savedMessage } = JSON.parse(saved);
+        if (Array.isArray(savedRoses)) setRoses(savedRoses);
+        if (typeof savedMessage === 'string') setMessage(savedMessage);
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
+  return (
+    <div className="flex flex-col h-screen bg-[#080808] overflow-hidden">
+      {!isPreviewMode && (
+        <Header
+          onUndo={handleUndo}
+          onClearAll={handleClearAll}
+          onPreview={() => setIsPreviewMode(true)}
+          onSend={() => setShowShareModal(true)}
+          isPreviewMode={false}
+          canUndo={history.length > 0}
+          onOpenLibrary={() => setIsLibraryOpen(true)}
+        />
+      )}
+
+      {isPreviewMode && (
+        <div className="fixed top-4 right-4 z-50">
+          <button
+            onClick={() => setIsPreviewMode(false)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F5F0E8] text-black text-xs font-medium hover:bg-white transition-all shadow-xl"
+          >
+            ← Edit
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-1 overflow-hidden">
+        {!isPreviewMode && (
+          <RoseLibrary
+            onAddRose={(rose) => addRose(rose)}
+            onDragStart={handleDragStart}
+            isOpen={isLibraryOpen}
+            onClose={() => setIsLibraryOpen(false)}
+          />
+        )}
+
+        <main className="flex-1 relative overflow-hidden">
+          <BouquetCanvas
+            roses={roses}
+            selectedId={selectedId}
+            onSelect={handleSelect}
+            onMove={handleMove}
+            onDrop={handleDrop}
+            isPreviewMode={isPreviewMode}
+          />
+
+          {/* Mobile bottom action bar */}
+          {!isPreviewMode && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 lg:hidden z-20">
+              <button
+                onClick={() => setIsLibraryOpen(true)}
+                className="px-4 py-2 rounded-full bg-white/10 text-xs text-gray-300 border border-white/10 backdrop-blur-sm"
+              >
+                🌹 Roses
+              </button>
+              <button
+                onClick={() => setIsPropertiesOpen(true)}
+                className="px-4 py-2 rounded-full bg-white/10 text-xs text-gray-300 border border-white/10 backdrop-blur-sm"
+              >
+                ⚙️ Edit
+              </button>
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="px-4 py-2 rounded-full bg-[#F5F0E8] text-xs text-black font-medium backdrop-blur-sm"
+              >
+                Send ✦
+              </button>
+            </div>
+          )}
+        </main>
+
+        {!isPreviewMode && (
+          <PropertiesPanel
+            selectedRose={selectedRose}
+            roseType={selectedRoseType}
+            totalRoses={roses.length}
+            usedColors={usedColors}
+            message={message}
+            onMessageChange={setMessage}
+            onScaleChange={handleScaleChange}
+            onRotationChange={handleRotationChange}
+            onBringForward={handleBringForward}
+            onSendBackward={handleSendBackward}
+            onDelete={handleDelete}
+            isOpen={isPropertiesOpen}
+            onClose={() => setIsPropertiesOpen(false)}
+          />
+        )}
+      </div>
+
+      {showShareModal && (
+        <ShareModal
+          bouquetData={bouquetData}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
+    </div>
+  );
+}
