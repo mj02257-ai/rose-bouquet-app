@@ -160,9 +160,9 @@ export default function BouquetCanvas({
         <div className="absolute inset-0 border-2 border-dashed border-white/20 rounded-lg pointer-events-none z-10" />
       )}
 
-      {/* Bouquet wrapper — always visible at bottom center */}
+      {/* Bouquet wrapper — open (flat) in edit mode */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-10">
-        <BouquetWrapper wrapper={wrapper} width={196} height={216} />
+        <BouquetWrapper wrapper={wrapper} width={isPreviewMode ? 196 : 240} height={isPreviewMode ? 216 : 132} isOpen={!isPreviewMode} />
       </div>
 
       {/* Empty state — shown above the wrapper */}
@@ -178,7 +178,7 @@ export default function BouquetCanvas({
         </div>
       )}
 
-      {/* Placed roses */}
+      {/* Placed roses — outer div: position + entrance; inner div: persistent transform */}
       {sortedRoses.map((rose) => {
         const roseType = getRoseType(rose.roseTypeId);
         if (!roseType) return null;
@@ -188,30 +188,36 @@ export default function BouquetCanvas({
         return (
           <div
             key={rose.id}
-            className="absolute cursor-grab active:cursor-grabbing"
+            className="absolute"
             style={{
               left: `${rose.x}%`,
               top: `${rose.y}%`,
-              transform: `translate(-50%, -50%) scale(${rose.scale}) rotate(${rose.rotation}deg)`,
               zIndex: rose.zIndex,
-              filter: isDragging
-                ? `drop-shadow(0 0 12px ${roseType.color}88) drop-shadow(0 4px 16px rgba(0,0,0,0.5))`
-                : isSelected
-                ? `drop-shadow(0 0 8px ${roseType.color}66)`
-                : 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))',
-              transition: isDragging ? 'none' : 'filter 0.2s ease',
-              animation: 'roseAppear 0.3s ease-out',
+              animation: 'roseEnter 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both',
             }}
             onMouseDown={(e) => !isPreviewMode && handleRoseMouseDown(e, rose)}
             onTouchStart={(e) => !isPreviewMode && handleRoseTouchStart(e, rose)}
           >
-            {isSelected && !isPreviewMode && (
-              <div
-                className="absolute inset-0 rounded-full border-2 border-white/40 pointer-events-none"
-                style={{ margin: '-4px' }}
-              />
-            )}
-            <RoseObject roseType={roseType} size={60} />
+            <div
+              className={isPreviewMode ? '' : 'cursor-grab active:cursor-grabbing'}
+              style={{
+                transform: `translate(-50%, -50%) scale(${rose.scale}) rotate(${rose.rotation}deg)`,
+                filter: isDragging
+                  ? `drop-shadow(0 0 14px ${roseType.color}90) drop-shadow(0 6px 18px rgba(0,0,0,0.55))`
+                  : isSelected
+                  ? `drop-shadow(0 0 10px ${roseType.color}70) drop-shadow(0 2px 8px rgba(0,0,0,0.4))`
+                  : 'drop-shadow(0 3px 8px rgba(0,0,0,0.45))',
+                transition: isDragging ? 'none' : 'filter 0.2s ease, transform 0.12s ease',
+              }}
+            >
+              {isSelected && !isPreviewMode && (
+                <div
+                  className="absolute inset-0 rounded-full border-2 border-white/40 pointer-events-none"
+                  style={{ margin: '-4px' }}
+                />
+              )}
+              <RoseObject roseType={roseType} size={60} />
+            </div>
           </div>
         );
       })}

@@ -37,28 +37,49 @@
   }
 }
 
-/* ── Rose appear animation ── */
+/* ── Rose entrance — slides up from below, settles with a slight bounce ── */
+@keyframes roseEnter {
+  0%   { opacity: 0; transform: scale(0.25) translateY(32px); }
+  55%  { opacity: 1; transform: scale(1.07) translateY(-4px); }
+  72%  { transform: scale(0.96) translateY(2px); }
+  85%  { transform: scale(1.02) translateY(-1px); }
+  100% { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+/* ── Gentle sway after placing — simulates a living stem ── */
+@keyframes roseSway {
+  0%   { transform: rotate(0deg); }
+  20%  { transform: rotate(1.4deg); }
+  50%  { transform: rotate(-0.9deg); }
+  75%  { transform: rotate(0.5deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* ── Legacy alias kept for any leftover references ── */
 @keyframes roseAppear {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.6);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1);   }
 }
 
 /* ── Fade up ── */
 @keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ── Wrapper wrapping motion ── */
+@keyframes wrapClose {
+  0%   { transform: scaleX(1)    scaleY(1)    translateY(0);    opacity: 1; }
+  30%  { transform: scaleX(0.88) scaleY(1.06) translateY(-4px); }
+  60%  { transform: scaleX(0.72) scaleY(1.10) translateY(-6px); }
+  80%  { transform: scaleX(0.78) scaleY(1.04) translateY(-3px); }
+  100% { transform: scaleX(1)    scaleY(1)    translateY(0);    opacity: 1; }
+}
+
+/* ── Showcase entry ── */
+@keyframes showcaseIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 /* ── Scrollbar ── */

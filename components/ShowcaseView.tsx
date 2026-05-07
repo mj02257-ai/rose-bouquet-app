@@ -13,40 +13,38 @@ interface ShowcaseViewProps {
   onSend: () => void;
 }
 
-/**
- * Full-screen showcase with CSS perspective rotateY for 360° viewing.
- * Mouse drag / touch swipe controls rotation; auto-rotate on entry.
- * Momentum: released drag coasts with exponential decay.
- */
 export default function ShowcaseView({ bouquetData, wrapper, onClose, onSend }: ShowcaseViewProps) {
-  const [rotY, setRotY] = useState(0);
+  const [rotY, setRotY]       = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
+  const [entered, setEntered] = useState(false);
 
-  // Mutable refs so drag callbacks stay stable (no deps)
   const isDraggingRef = useRef(false);
-  const lastXRef     = useRef(0);
-  const velocityRef  = useRef(0);
-  const rafRef       = useRef<number | undefined>(undefined);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const lastXRef      = useRef(0);
+  const velocityRef   = useRef(0);
+  const rafRef        = useRef<number | undefined>(undefined);
+  const containerRef  = useRef<HTMLDivElement>(null);
 
-  // ── Auto-rotation ──────────────────────────────────────────────
+  // Entry animation trigger
+  useEffect(() => {
+    const t = setTimeout(() => setEntered(true), 40);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Auto-rotation
   useEffect(() => {
     if (!autoRotate || isDragging) return;
     let last = performance.now();
     const tick = (now: number) => {
       const dt = Math.min(now - last, 50);
       last = now;
-      setRotY((prev) => prev + dt * 0.032);
+      setRotY((prev) => prev + dt * 0.028);
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [autoRotate, isDragging]);
 
-  // ── Drag handlers (stable refs, empty deps) ───────────────────
   const startDrag = useCallback((x: number) => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     isDraggingRef.current = true;
@@ -60,7 +58,7 @@ export default function ShowcaseView({ bouquetData, wrapper, onClose, onSend }: 
     if (!isDraggingRef.current) return;
     const delta = x - lastXRef.current;
     velocityRef.current = delta;
-    setRotY((prev) => prev + delta * 0.44);
+    setRotY((prev) => prev + delta * 0.5);
     lastXRef.current = x;
   }, []);
 
@@ -68,44 +66,51 @@ export default function ShowcaseView({ bouquetData, wrapper, onClose, onSend }: 
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
     setIsDragging(false);
-    // Momentum coast
-    let mom = velocityRef.current * 0.44;
+    let mom = velocityRef.current * 0.5;
     const decay = () => {
-      mom *= 0.91;
-      if (Math.abs(mom) < 0.08) return;
+      mom *= 0.9;
+      if (Math.abs(mom) < 0.06) return;
       setRotY((prev) => prev + mom);
       requestAnimationFrame(decay);
     };
-    if (Math.abs(mom) > 0.3) requestAnimationFrame(decay);
+    if (Math.abs(mom) > 0.25) requestAnimationFrame(decay);
   }, []);
 
-  // ── Touch: passive:false to prevent scroll ────────────────────
+  // passive:false touch move to block scroll
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const onTouchMove = (e: TouchEvent) => {
-      e.preventDefault();
-      moveDrag(e.touches[0].clientX);
-    };
+    const onTouchMove = (e: TouchEvent) => { e.preventDefault(); moveDrag(e.touches[0].clientX); };
     el.addEventListener('touchmove', onTouchMove, { passive: false });
     return () => el.removeEventListener('touchmove', onTouchMove);
   }, [moveDrag]);
 
   const sortedRoses = [...bouquetData.roses].sort((a, b) => a.zIndex - b.zIndex);
 
-  return (
-    <div className="fixed inset-0 bg-[#060606] z-50 flex flex-col">
+  // Depth parallax: compute per-rose lateral + scale shift from rotation angle
+  const rotRad = (rotY * Math.PI) / 180;
+  const sinRot = Math.sin(rotRad);
+  const zIndices = sortedRoses.map((r) => r.zIndex);
+  const zMin = zIndices.length ? Math.min(...zIndices) : 0;
+  const zMax = zIndices.length ? Math.max(...zIndices) : 1;
+  const zRange = Math.max(1, zMax - zMin);
 
-      {/* ── Header ── */}
+  return (
+    <div
+      className="fixed inset-0 bg-[#050505] z-50 flex flex-col"
+      style={{
+        animation: entered ? 'showcaseIn 0.55s cubic-bezier(0.16,1,0.3,1) both' : undefined,
+      }}
+    >
+      {/* ── Header ────────────────────────────────────────── */}
       <div className="flex-shrink-0 flex items-center justify-between px-5 h-14 border-b border-white/[0.06]">
         <div>
-          <p className="text-[11px] text-white/25">완성된 꽃다발</p>
+          <p className="text-[11px] text-white/25 tracking-wide">완성된 꽃다발</p>
           <p className="text-[12px] text-white/65 font-medium mt-0.5">
             {bouquetData.roses.length}송이 · {wrapper.nameKo} 포장
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Auto-rotate toggle */}
           <button
             onClick={() => setAutoRotate((v) => !v)}
             className={`hidden sm:flex px-3 py-1.5 text-[11px] rounded-sm border transition-all ${
@@ -131,7 +136,7 @@ export default function ShowcaseView({ bouquetData, wrapper, onClose, onSend }: 
         </div>
       </div>
 
-      {/* ── 360° Canvas ── */}
+      {/* ── 360° Canvas ───────────────────────────────────── */}
       <div
         ref={containerRef}
         className="flex-1 flex items-center justify-center select-none overflow-hidden relative"
@@ -145,36 +150,58 @@ export default function ShowcaseView({ bouquetData, wrapper, onClose, onSend }: 
       >
         {/* Ambient glow */}
         <div
-          className="absolute pointer-events-none rounded-full"
+          className="absolute pointer-events-none"
           style={{
-            width: '380px',
-            height: '380px',
-            background: `radial-gradient(circle, ${wrapper.paperColor}16 0%, transparent 68%)`,
-            filter: 'blur(70px)',
+            width: '500px', height: '500px',
+            background: `radial-gradient(circle, ${wrapper.paperColor}18 0%, transparent 66%)`,
+            filter: 'blur(80px)',
+            transform: `translateX(${sinRot * 30}px)`,
+            transition: 'transform 0.1s linear',
           }}
         />
 
-        {/* Perspective stage */}
-        <div style={{ perspective: '1000px', perspectiveOrigin: '50% 42%' }}>
+        {/* ── Perspective stage (stronger = more 3D depth) ── */}
+        <div style={{ perspective: '680px', perspectiveOrigin: '50% 44%' }}>
+          {/*
+           * rotateY drives the spin.
+           * rotateX(-6deg) tilts the bouquet slightly toward viewer — more natural.
+           */}
           <div
             style={{
-              transform: `rotateY(${rotY}deg)`,
+              transform: `rotateY(${rotY}deg) rotateX(-6deg)`,
               transition: isDragging ? 'none' : 'transform 0.04s linear',
               transformStyle: 'preserve-3d',
             }}
           >
-            {/* Bouquet: roses on top, wrapper at bottom */}
             <div
               className="relative"
               style={{
-                width:  'clamp(210px, 38vw, 290px)',
-                height: 'clamp(330px, 58vw, 450px)',
+                width:  'clamp(220px, 40vw, 300px)',
+                height: 'clamp(340px, 62vw, 460px)',
+                transformStyle: 'preserve-3d',
               }}
             >
-              {/* Roses */}
+              {/* Roses — each gets its own translateZ for true 3D depth */}
               {sortedRoses.map((rose) => {
                 const rt = ROSES.find((r) => r.id === rose.roseTypeId);
                 if (!rt) return null;
+
+                // 0 = back, 1 = front
+                const depthNorm = (rose.zIndex - zMin) / zRange;
+
+                // Lateral parallax as bouquet turns (front roses shift more)
+                const px = sinRot * depthNorm * 18;
+
+                // Scale: front roses slightly larger when facing forward
+                const scaleBoost = 1 + depthNorm * 0.14 * (1 - Math.abs(sinRot) * 0.5);
+
+                // Z depth: spread roses from -40px (back) to +40px (front)
+                const translateZ = (depthNorm - 0.5) * 80;
+
+                // Shadow deepens for back roses
+                const shadowBlur  = 10 + depthNorm * 12;
+                const shadowAlpha = 0.35 + depthNorm * 0.25;
+
                 return (
                   <div
                     key={rose.id}
@@ -182,9 +209,10 @@ export default function ShowcaseView({ bouquetData, wrapper, onClose, onSend }: 
                     style={{
                       left:      `${rose.x}%`,
                       top:       `${rose.y * 0.66}%`,
-                      transform: `translate(-50%, -50%) scale(${rose.scale * 1.15}) rotate(${rose.rotation}deg)`,
+                      transform: `translate(calc(-50% + ${px}px), -50%) translateZ(${translateZ}px) scale(${rose.scale * 1.14 * scaleBoost}) rotate(${rose.rotation}deg)`,
                       zIndex:    rose.zIndex,
-                      filter:    'drop-shadow(0 4px 14px rgba(0,0,0,0.45))',
+                      filter:    `drop-shadow(0 ${4 + depthNorm * 8}px ${shadowBlur}px rgba(0,0,0,${shadowAlpha}))`,
+                      transition: isDragging ? 'none' : 'transform 0.04s linear',
                     }}
                   >
                     <RoseObject roseType={rt} size={70} />
@@ -192,21 +220,41 @@ export default function ShowcaseView({ bouquetData, wrapper, onClose, onSend }: 
                 );
               })}
 
-              {/* Wrapper */}
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none">
-                <BouquetWrapper wrapper={wrapper} width={218} height={238} />
+              {/* Wrapper at base — pushed slightly back in Z */}
+              <div
+                className="absolute bottom-0 left-1/2 pointer-events-none"
+                style={{
+                  transform: `translateX(-50%) translateZ(-30px)`,
+                  transformStyle: 'preserve-3d',
+                }}
+              >
+                <BouquetWrapper wrapper={wrapper} width={222} height={242} isOpen={false} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Hint */}
-        <p className="absolute bottom-6 text-[10px] text-white/14 select-none pointer-events-none tracking-wider">
+        {/* Ground reflection — pseudo shadow */}
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            bottom: '14%',
+            width: 'clamp(140px, 26vw, 200px)',
+            height: '28px',
+            background: `radial-gradient(ellipse, rgba(0,0,0,0.45) 0%, transparent 72%)`,
+            filter: 'blur(8px)',
+            transform: `scaleX(${0.7 + Math.abs(sinRot) * 0.3})`,
+            transition: 'transform 0.06s linear',
+          }}
+        />
+
+        {/* Drag hint */}
+        <p className="absolute bottom-5 text-[10px] text-white/14 select-none pointer-events-none tracking-widest">
           ← 드래그해서 돌려보세요 →
         </p>
       </div>
 
-      {/* ── Message footer ── */}
+      {/* ── Message footer ──────────────────────────────── */}
       {bouquetData.message && (
         <div className="flex-shrink-0 px-6 py-3.5 border-t border-white/[0.06] text-center">
           <p className="text-[12px] text-white/35 italic leading-relaxed">

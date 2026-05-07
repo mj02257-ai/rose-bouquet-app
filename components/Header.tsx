@@ -42,17 +42,19 @@ export default function Header({
 
         <div className="flex items-baseline gap-3">
           {!logoError ? (
-            <Image
-              src="/assets/brand/andz-logo.png"
-              alt="ANDZ"
-              width={68}
-              height={24}
-              className="object-contain object-left"
-              onError={() => setLogoError(true)}
-              priority
-            />
+            <span className="bg-[#F0EDE8] rounded-[3px] px-2 py-0.5 flex items-center">
+              <Image
+                src="/assets/brand/andz-logo.png"
+                alt="ANDZ"
+                width={58}
+                height={20}
+                className="object-contain block"
+                onError={() => setLogoError(true)}
+                priority
+              />
+            </span>
           ) : (
-            <span className="text-[15px] font-semibold tracking-[0.08em] text-cream">
+            <span className="text-[14px] font-bold tracking-[0.12em] text-[#0A0A0A] bg-[#F0EDE8] px-2 py-0.5 rounded-[3px]">
               ANDZ
             </span>
           )}

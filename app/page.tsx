@@ -9,6 +9,8 @@ import BouquetCanvas from '@/components/BouquetCanvas';
 import PropertiesPanel from '@/components/PropertiesPanel';
 import ShareModal from '@/components/ShareModal';
 import ShowcaseView from '@/components/ShowcaseView';
+import BouquetWrapper from '@/components/BouquetWrapper';
+import RoseObject from '@/components/RoseObject';
 
 let idCounter = 0;
 const generateId = () => `rose-${Date.now()}-${++idCounter}`;
@@ -22,6 +24,7 @@ export default function HomePage() {
   const [wrapperId, setWrapperId] = useState(DEFAULT_WRAPPER_ID);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isShowcaseMode, setIsShowcaseMode] = useState(false);
+  const [isWrapping,     setIsWrapping]     = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
@@ -143,6 +146,16 @@ export default function HomePage() {
     setSelectedId(null);
   }, [message, saveHistory]);
 
+  // Trigger the wrapping animation, then transition to showcase after 1.4 s
+  const handleComplete = useCallback(() => {
+    if (roses.length === 0) return;
+    setIsWrapping(true);
+    setTimeout(() => {
+      setIsWrapping(false);
+      setIsShowcaseMode(true);
+    }, 1400);
+  }, [roses.length]);
+
   const selectedRose = roses.find((r) => r.id === selectedId) || null;
   const selectedRoseType = selectedRose ? ROSES.find((r) => r.id === selectedRose.roseTypeId) || null : null;
   const usedColors = Array.from(new Set(roses.map((r) => r.roseTypeId)))
@@ -178,7 +191,39 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col h-screen bg-[#080808] overflow-hidden">
-      {/* Showcase mode — full screen overlay */}
+      {/* ── Wrapping animation overlay ─────────────────────────── */}
+      {isWrapping && (
+        <div className="fixed inset-0 z-50 bg-[#060606] flex flex-col items-center justify-center"
+             style={{ animation: 'fadeUp 0.25s ease-out' }}>
+          <div className="relative" style={{ width: 'clamp(220px,38vw,300px)', height: 'clamp(340px,58vw,460px)' }}>
+            {/* Roses */}
+            {[...roses].sort((a, b) => a.zIndex - b.zIndex).map((rose) => {
+              const rt = ROSES.find((r) => r.id === rose.roseTypeId);
+              if (!rt) return null;
+              return (
+                <div key={rose.id} className="absolute pointer-events-none"
+                  style={{
+                    left: `${rose.x}%`,
+                    top:  `${rose.y * 0.66}%`,
+                    transform: `translate(-50%,-50%) scale(${rose.scale * 1.14}) rotate(${rose.rotation}deg)`,
+                    zIndex: rose.zIndex,
+                    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.5))',
+                    animation: 'fadeUp 0.35s ease-out both',
+                  }}>
+                  <RoseObject roseType={rt} size={70} />
+                </div>
+              );
+            })}
+            {/* Wrapper — plays wrapClose animation */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none">
+              <BouquetWrapper wrapper={selectedWrapper} width={222} height={242} isWrapping />
+            </div>
+          </div>
+          <p className="mt-8 text-[11px] text-white/28 tracking-widest">꽃다발을 포장하는 중…</p>
+        </div>
+      )}
+
+      {/* ── Showcase mode ───────────────────────────────────────── */}
       {isShowcaseMode && (
         <ShowcaseView
           bouquetData={bouquetData}
@@ -188,7 +233,7 @@ export default function HomePage() {
         />
       )}
 
-      {!isPreviewMode && !isShowcaseMode && (
+      {!isPreviewMode && !isShowcaseMode && !isWrapping && (
         <Header
           onUndo={handleUndo}
           onClearAll={handleClearAll}
@@ -211,7 +256,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {!isShowcaseMode && (
+      {!isShowcaseMode && !isWrapping && (
         <div className="flex flex-1 overflow-hidden">
           {!isPreviewMode && (
             <RoseLibrary
@@ -251,7 +296,7 @@ export default function HomePage() {
                   메시지
                 </button>
                 <button
-                  onClick={() => roses.length > 0 && setIsShowcaseMode(true)}
+                  onClick={handleComplete}
                   disabled={roses.length === 0}
                   className={`px-4 py-2 rounded-sm text-[11px] font-semibold backdrop-blur-md transition-all ${
                     roses.length > 0
@@ -278,7 +323,7 @@ export default function HomePage() {
               onBringForward={handleBringForward}
               onSendBackward={handleSendBackward}
               onDelete={handleDelete}
-              onComplete={() => setIsShowcaseMode(true)}
+              onComplete={handleComplete}
               isOpen={isPropertiesOpen}
               onClose={() => setIsPropertiesOpen(false)}
             />
