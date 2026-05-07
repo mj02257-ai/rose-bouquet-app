@@ -19,14 +19,10 @@ interface PropertiesPanelProps {
   onClose: () => void;
 }
 
-// TODO: 2단계에서 "선물 메시지 카드" 형태로 전체 개편 예정
-// TODO: 받는 사람 / 보내는 사람 / 추천 문구 / 완성 버튼 추가 예정
-
 const SUGGESTED_MESSAGES = [
   '어른이 된 오늘을 진심으로 축하해.',
   '오늘의 한 송이가 오래 기억되길 바라.',
   '새로운 시작을 진심으로 응원할게.',
-  '성년이 된 너를 오래전부터 기다렸어.',
 ];
 
 export default function PropertiesPanel({
@@ -49,7 +45,7 @@ export default function PropertiesPanel({
     <>
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/70 z-30 lg:hidden backdrop-blur-sm"
+          className="fixed inset-0 bg-black/30 z-30 lg:hidden backdrop-blur-sm"
           onClick={onClose}
         />
       )}
@@ -58,7 +54,7 @@ export default function PropertiesPanel({
         className={`
           fixed lg:relative z-40 lg:z-auto
           w-[268px] h-full lg:h-auto
-          bg-[#0F0F0F] border-l border-white/[0.07]
+          bg-white border-l border-black/[0.07]
           flex flex-col
           transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
@@ -66,12 +62,12 @@ export default function PropertiesPanel({
         `}
       >
         {/* ── Panel top ── */}
-        <div className="px-4 pt-4 pb-3 flex-shrink-0 border-b border-white/[0.06] flex items-center justify-between">
-          <span className="text-[11px] text-white/30 font-medium">
+        <div className="px-4 pt-4 pb-3 flex-shrink-0 border-b border-black/[0.06] flex items-center justify-between">
+          <span className="text-[11px] text-black/35 font-medium">
             {totalRoses > 0 ? `${totalRoses}송이 선택됨` : '꽃을 추가해보세요'}
           </span>
           <button
-            className="lg:hidden text-white/30 hover:text-white/70 transition-colors"
+            className="lg:hidden text-black/30 hover:text-black/70 transition-colors"
             onClick={onClose}
             aria-label="닫기"
           >
@@ -83,23 +79,22 @@ export default function PropertiesPanel({
 
         <div className="flex-1 overflow-y-auto">
 
-          {/* ── Rose edit controls (선택된 장미가 있을 때만) ── */}
+          {/* ── Rose edit controls ── */}
           {selectedRose && roseType && (
-            <div className="px-4 py-4 border-b border-white/[0.06] space-y-4">
-              {/* Selected rose indicator */}
+            <div className="px-4 py-4 border-b border-black/[0.06] space-y-4">
               <div className="flex items-center gap-2">
                 <div
-                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  className="w-3 h-3 rounded-full flex-shrink-0 border border-black/10"
                   style={{ backgroundColor: roseType.color }}
                 />
-                <p className="text-[12px] text-cream font-medium">{roseType.name}</p>
+                <p className="text-[12px] text-black/70 font-medium">{roseType.name}</p>
               </div>
 
               {/* Size */}
               <div>
                 <div className="flex justify-between mb-2">
-                  <label className="text-[11px] text-white/35">크기</label>
-                  <span className="text-[11px] text-white/30">
+                  <label className="text-[11px] text-black/40">크기</label>
+                  <span className="text-[11px] text-black/30">
                     {Math.round(selectedRose.scale * 100)}%
                   </span>
                 </div>
@@ -117,8 +112,8 @@ export default function PropertiesPanel({
               {/* Rotation */}
               <div>
                 <div className="flex justify-between mb-2">
-                  <label className="text-[11px] text-white/35">방향</label>
-                  <span className="text-[11px] text-white/30">
+                  <label className="text-[11px] text-black/40">방향</label>
+                  <span className="text-[11px] text-black/30">
                     {Math.round(selectedRose.rotation)}°
                   </span>
                 </div>
@@ -137,13 +132,13 @@ export default function PropertiesPanel({
               <div className="flex gap-2">
                 <button
                   onClick={onBringForward}
-                  className="flex-1 py-1.5 text-[11px] font-medium rounded-sm border border-white/[0.08] text-white/40 hover:text-white/70 hover:border-white/20 transition-all"
+                  className="flex-1 py-1.5 text-[11px] font-medium rounded-sm border border-black/[0.09] text-black/45 hover:text-black/70 hover:border-black/20 transition-all"
                 >
                   앞으로
                 </button>
                 <button
                   onClick={onSendBackward}
-                  className="flex-1 py-1.5 text-[11px] font-medium rounded-sm border border-white/[0.08] text-white/40 hover:text-white/70 hover:border-white/20 transition-all"
+                  className="flex-1 py-1.5 text-[11px] font-medium rounded-sm border border-black/[0.09] text-black/45 hover:text-black/70 hover:border-black/20 transition-all"
                 >
                   뒤로
                 </button>
@@ -152,7 +147,7 @@ export default function PropertiesPanel({
               {/* Delete */}
               <button
                 onClick={onDelete}
-                className="w-full py-1.5 text-[11px] font-medium rounded-sm border border-rose-500/20 text-rose-400/60 hover:text-rose-400 hover:border-rose-400/40 hover:bg-rose-500/[0.05] transition-all"
+                className="w-full py-1.5 text-[11px] font-medium rounded-sm border border-rose-400/25 text-rose-500/70 hover:text-rose-600 hover:border-rose-400/50 hover:bg-rose-50 transition-all"
               >
                 이 장미 제거
               </button>
@@ -161,13 +156,13 @@ export default function PropertiesPanel({
 
           {/* ── Bouquet summary ── */}
           {usedColors.length > 0 && (
-            <div className="px-4 py-3 border-b border-white/[0.06]">
-              <p className="text-[11px] text-white/25 mb-2">꽃다발 구성</p>
+            <div className="px-4 py-3 border-b border-black/[0.06]">
+              <p className="text-[11px] text-black/28 mb-2">꽃다발 구성</p>
               <div className="flex gap-1.5 flex-wrap">
                 {usedColors.map((color) => (
                   <div
                     key={color}
-                    className="w-4 h-4 rounded-full border border-black/30"
+                    className="w-4 h-4 rounded-full border border-black/15"
                     style={{ backgroundColor: color }}
                   />
                 ))}
@@ -177,42 +172,40 @@ export default function PropertiesPanel({
 
           {/* ── Message card ── */}
           <div className="px-4 py-4 space-y-3">
-            <p className="text-[11px] text-white/30 font-medium">메시지 카드</p>
+            <p className="text-[11px] text-black/35 font-medium">메시지 카드</p>
 
-            {/* Suggested messages */}
             <div className="space-y-1">
               {SUGGESTED_MESSAGES.map((msg) => (
                 <button
                   key={msg}
                   onClick={() => onMessageChange(msg)}
-                  className="w-full text-left px-3 py-2 rounded-sm text-[11px] text-white/35 hover:text-white/60 hover:bg-white/[0.04] border border-transparent hover:border-white/[0.06] transition-all leading-snug"
+                  className="w-full text-left px-3 py-2 rounded-sm text-[11px] text-black/40 hover:text-black/65 hover:bg-black/[0.04] border border-transparent hover:border-black/[0.07] transition-all leading-snug"
                 >
                   {msg}
                 </button>
               ))}
             </div>
 
-            {/* Message textarea */}
             <textarea
               value={message}
               onChange={(e) => onMessageChange(e.target.value)}
               placeholder="직접 메시지를 입력해보세요…"
               rows={4}
-              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-sm px-3 py-2.5 text-[12px] text-white/60 placeholder-white/20 focus:outline-none focus:border-white/20 resize-none transition-colors leading-relaxed"
+              className="w-full bg-black/[0.03] border border-black/[0.09] rounded-sm px-3 py-2.5 text-[12px] text-black/65 placeholder-black/22 focus:outline-none focus:border-black/20 resize-none transition-colors leading-relaxed"
             />
           </div>
         </div>
 
-        {/* ── Complete button — pinned at panel bottom ── */}
-        <div className="px-4 py-3 border-t border-white/[0.06] flex-shrink-0">
+        {/* ── Complete button ── */}
+        <div className="px-4 py-3 border-t border-black/[0.06] flex-shrink-0">
           <button
             onClick={onComplete}
             disabled={totalRoses === 0}
             className={`
               w-full py-2.5 text-[12px] font-semibold rounded-sm transition-all duration-200
               ${totalRoses > 0
-                ? 'bg-[#F0EDE8] text-[#0A0A0A] hover:bg-white cursor-pointer'
-                : 'bg-white/[0.05] text-white/20 cursor-not-allowed border border-white/[0.06]'
+                ? 'bg-[#1A1816] text-white hover:bg-black cursor-pointer'
+                : 'bg-black/[0.05] text-black/22 cursor-not-allowed border border-black/[0.07]'
               }
             `}
           >

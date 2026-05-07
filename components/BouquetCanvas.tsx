@@ -42,7 +42,6 @@ export default function BouquetCanvas({
     };
   }, []);
 
-  // Handle external drag-drop from library
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(true);
@@ -64,7 +63,6 @@ export default function BouquetCanvas({
     [getCanvasRelativePos, onDrop]
   );
 
-  // Handle dragging placed roses
   const handleRoseMouseDown = useCallback(
     (e: React.MouseEvent, rose: BouquetRose) => {
       e.stopPropagation();
@@ -136,49 +134,56 @@ export default function BouquetCanvas({
     <div
       ref={canvasRef}
       className={`relative w-full h-full overflow-hidden select-none ${
-        isDragOver ? 'bg-white/5' : ''
+        isDragOver ? 'bg-black/[0.03]' : ''
       }`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       onClick={() => onSelect(null)}
     >
-      {/* Grid background */}
+      {/* Subtle dot grid */}
       <div
-        className="absolute inset-0 opacity-20"
+        className="absolute inset-0"
         style={{
-          backgroundImage: `
-            linear-gradient(to right, rgba(255,255,255,0.07) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255,255,255,0.07) 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
+          backgroundImage: `radial-gradient(circle, rgba(0,0,0,0.09) 1px, transparent 1px)`,
+          backgroundSize: '28px 28px',
         }}
       />
 
-      {/* Drop zone hint */}
       {isDragOver && (
-        <div className="absolute inset-0 border-2 border-dashed border-white/20 rounded-lg pointer-events-none z-10" />
+        <div className="absolute inset-0 border-2 border-dashed border-black/20 rounded-lg pointer-events-none z-10" />
       )}
 
       {/* Bouquet wrapper — open (flat) in edit mode */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-10">
-        <BouquetWrapper wrapper={wrapper} width={isPreviewMode ? 196 : 240} height={isPreviewMode ? 216 : 132} isOpen={!isPreviewMode} />
+        <BouquetWrapper
+          wrapper={wrapper}
+          width={isPreviewMode ? 196 : 240}
+          height={isPreviewMode ? 216 : 132}
+          isOpen={!isPreviewMode}
+        />
       </div>
 
-      {/* Empty state — shown above the wrapper */}
+      {/* Empty state */}
       {roses.length === 0 && !isPreviewMode && (
-        <div className="absolute left-0 right-0 flex flex-col items-center gap-1.5 pointer-events-none"
-             style={{ top: '22%' }}>
-          <p className="text-[13px] text-white/22 text-center font-medium px-6">
+        <div
+          className="absolute left-0 right-0 flex flex-col items-center gap-1.5 pointer-events-none"
+          style={{ top: '22%' }}
+        >
+          <p className="text-[13px] text-black/25 text-center font-medium px-6">
             어른이 된 오늘, 한 송이의 마음을 전해보세요.
           </p>
-          <p className="text-[11px] text-white/12 text-center">
+          <p className="text-[11px] text-black/15 text-center">
             왼쪽에서 장미를 선택하거나 드래그해 추가하세요
           </p>
         </div>
       )}
 
-      {/* Placed roses — outer div: position + entrance; inner div: persistent transform */}
+      {/*
+       * Each rose uses a single div positioned absolutely with full CSS transform
+       * including translate(-50%,-50%). This ensures the click target matches the
+       * visual center exactly — no inner div offset mismatch.
+       */}
       {sortedRoses.map((rose) => {
         const roseType = getRoseType(rose.roseTypeId);
         if (!roseType) return null;
@@ -188,36 +193,30 @@ export default function BouquetCanvas({
         return (
           <div
             key={rose.id}
-            className="absolute"
+            className={`absolute ${isPreviewMode ? '' : 'cursor-grab active:cursor-grabbing'}`}
             style={{
               left: `${rose.x}%`,
               top: `${rose.y}%`,
               zIndex: rose.zIndex,
+              transform: `translate(-50%, -50%) scale(${rose.scale}) rotate(${rose.rotation}deg)`,
+              filter: isDragging
+                ? `drop-shadow(0 0 14px ${roseType.color}88) drop-shadow(0 6px 18px rgba(0,0,0,0.25))`
+                : isSelected
+                ? `drop-shadow(0 0 10px ${roseType.color}66) drop-shadow(0 2px 8px rgba(0,0,0,0.18))`
+                : 'drop-shadow(0 3px 8px rgba(0,0,0,0.18))',
+              transition: isDragging ? 'none' : 'filter 0.2s ease',
               animation: 'roseEnter 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both',
             }}
             onMouseDown={(e) => !isPreviewMode && handleRoseMouseDown(e, rose)}
             onTouchStart={(e) => !isPreviewMode && handleRoseTouchStart(e, rose)}
           >
-            <div
-              className={isPreviewMode ? '' : 'cursor-grab active:cursor-grabbing'}
-              style={{
-                transform: `translate(-50%, -50%) scale(${rose.scale}) rotate(${rose.rotation}deg)`,
-                filter: isDragging
-                  ? `drop-shadow(0 0 14px ${roseType.color}90) drop-shadow(0 6px 18px rgba(0,0,0,0.55))`
-                  : isSelected
-                  ? `drop-shadow(0 0 10px ${roseType.color}70) drop-shadow(0 2px 8px rgba(0,0,0,0.4))`
-                  : 'drop-shadow(0 3px 8px rgba(0,0,0,0.45))',
-                transition: isDragging ? 'none' : 'filter 0.2s ease, transform 0.12s ease',
-              }}
-            >
-              {isSelected && !isPreviewMode && (
-                <div
-                  className="absolute inset-0 rounded-full border-2 border-white/40 pointer-events-none"
-                  style={{ margin: '-4px' }}
-                />
-              )}
-              <RoseObject roseType={roseType} size={60} />
-            </div>
+            {isSelected && !isPreviewMode && (
+              <div
+                className="absolute inset-0 rounded-full border-2 border-black/30 pointer-events-none"
+                style={{ margin: '-4px' }}
+              />
+            )}
+            <RoseObject roseType={roseType} size={60} />
           </div>
         );
       })}

@@ -108,7 +108,7 @@ export type CategoryFilter = typeof CATEGORIES[number];
 export const WRAPPERS: WrapperStyle[] = [
   { id: 'pink',     name: 'Pink',     nameKo: '핑크',   paperColor: '#F2C4CE', paperDark: '#C8809A', ribbonColor: '#C0607C' },
   { id: 'black',    name: 'Black',    nameKo: '블랙',   paperColor: '#2E2E2E', paperDark: '#1A1A1A', ribbonColor: '#808080' },
-  { id: 'white',    name: 'White',    nameKo: '화이트', paperColor: '#F0EDE8', paperDark: '#C8C4BE', ribbonColor: '#A8A4A0' },
+  { id: 'white',    name: 'White',    nameKo: '화이트', paperColor: '#FAFAFA', paperDark: '#E0DCD8', ribbonColor: '#C0BCBA' },
   { id: 'beige',    name: 'Beige',    nameKo: '베이지', paperColor: '#E8DEC8', paperDark: '#C0A878', ribbonColor: '#A08858' },
   { id: 'burgundy', name: 'Burgundy', nameKo: '버건디', paperColor: '#6B1F2E', paperDark: '#3E1018', ribbonColor: '#9B3048' },
 ];

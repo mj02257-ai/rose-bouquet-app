@@ -190,10 +190,10 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-[#080808] overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#F5F3F0] overflow-hidden">
       {/* ── Wrapping animation overlay ─────────────────────────── */}
       {isWrapping && (
-        <div className="fixed inset-0 z-50 bg-[#060606] flex flex-col items-center justify-center"
+        <div className="fixed inset-0 z-50 bg-[#F5F3F0] flex flex-col items-center justify-center"
              style={{ animation: 'fadeUp 0.25s ease-out' }}>
           <div className="relative" style={{ width: 'clamp(220px,38vw,300px)', height: 'clamp(340px,58vw,460px)' }}>
             {/* Roses */}
@@ -207,7 +207,7 @@ export default function HomePage() {
                     top:  `${rose.y * 0.66}%`,
                     transform: `translate(-50%,-50%) scale(${rose.scale * 1.14}) rotate(${rose.rotation}deg)`,
                     zIndex: rose.zIndex,
-                    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.5))',
+                    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.18))',
                     animation: 'fadeUp 0.35s ease-out both',
                   }}>
                   <RoseObject roseType={rt} size={70} />
@@ -219,7 +219,7 @@ export default function HomePage() {
               <BouquetWrapper wrapper={selectedWrapper} width={222} height={242} isWrapping />
             </div>
           </div>
-          <p className="mt-8 text-[11px] text-white/28 tracking-widest">꽃다발을 포장하는 중…</p>
+          <p className="mt-8 text-[11px] text-black/30 tracking-widest">꽃다발을 포장하는 중…</p>
         </div>
       )}
 
@@ -249,7 +249,7 @@ export default function HomePage() {
         <div className="fixed top-4 right-4 z-50">
           <button
             onClick={() => setIsPreviewMode(false)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-sm bg-[#F0EDE8] text-[#0A0A0A] text-[11px] font-semibold hover:bg-white transition-colors shadow-xl"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-sm bg-[#1A1816] text-white text-[11px] font-semibold hover:bg-black transition-colors shadow-xl"
           >
             ← 편집으로
           </button>
@@ -285,23 +285,23 @@ export default function HomePage() {
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 lg:hidden z-20">
                 <button
                   onClick={() => setIsLibraryOpen(true)}
-                  className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/60 border border-white/[0.08] backdrop-blur-md"
+                  className="px-4 py-2 rounded-sm bg-white text-[11px] font-medium text-black/55 border border-black/[0.10] backdrop-blur-md shadow-sm"
                 >
                   장미 선택
                 </button>
                 <button
                   onClick={() => setIsPropertiesOpen(true)}
-                  className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/60 border border-white/[0.08] backdrop-blur-md"
+                  className="px-4 py-2 rounded-sm bg-white text-[11px] font-medium text-black/55 border border-black/[0.10] backdrop-blur-md shadow-sm"
                 >
                   메시지
                 </button>
                 <button
                   onClick={handleComplete}
                   disabled={roses.length === 0}
-                  className={`px-4 py-2 rounded-sm text-[11px] font-semibold backdrop-blur-md transition-all ${
+                  className={`px-4 py-2 rounded-sm text-[11px] font-semibold backdrop-blur-md transition-all shadow-sm ${
                     roses.length > 0
-                      ? 'bg-[#F0EDE8] text-[#0A0A0A]'
-                      : 'bg-white/[0.05] text-white/20 cursor-not-allowed'
+                      ? 'bg-[#1A1816] text-white'
+                      : 'bg-black/[0.06] text-black/22 cursor-not-allowed'
                   }`}
                 >
                   완성
