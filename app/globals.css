@@ -4,116 +4,102 @@
 
 @layer base {
   :root {
-    --color-bg: #F5F3F0;
+    /* Site chrome: white/silver editorial panels */
+    --color-bg: #F7F7F5;
     --color-surface: #FFFFFF;
-    --color-surface-raised: #FAFAF8;
     --color-border: rgba(0, 0, 0, 0.07);
     --color-border-hover: rgba(0, 0, 0, 0.16);
-    --color-text-primary: #1A1816;
-    --color-text-secondary: #6B6560;
+    --color-text-primary: #111110;
+    --color-text-secondary: #6A6560;
     --color-text-muted: #A09890;
-    --color-accent: #8B6355;
-    --color-accent-soft: rgba(139, 99, 85, 0.10);
+
+    /* Canvas: near-black editorial backdrop */
+    --color-canvas: #0A0A09;
   }
 
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; }
 
-  html,
-  body {
+  html, body {
     height: 100%;
     margin: 0;
     padding: 0;
   }
 
   body {
-    font-family: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont,
-      'Segoe UI', sans-serif;
+    font-family: var(--font-space), var(--font-noto-kr), 'Inter', -apple-system, sans-serif;
     background-color: var(--color-bg);
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
   }
 }
 
-/* ── Rose entrance — stem rises, settles with natural micro-bounce ── */
+/* ── Rose entrance — stem rises from below, settles naturally ── */
 @keyframes roseEnter {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.22) translateY(40px); }
-  48%  { opacity: 1; transform: translate(-50%, -50%) scale(1.06) translateY(-5px); }
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.18) translateY(50px); }
+  50%  { opacity: 1; transform: translate(-50%, -50%) scale(1.05) translateY(-4px); }
   68%  { transform: translate(-50%, -50%) scale(0.97) translateY(2px); }
-  84%  { transform: translate(-50%, -50%) scale(1.02) translateY(-1px); }
+  84%  { transform: translate(-50%, -50%) scale(1.01) translateY(-1px); }
   100% { opacity: 1; transform: translate(-50%, -50%) scale(1) translateY(0); }
 }
 
-/* ── Gentle post-place sway — living stem feel ── */
+/* ── Post-place sway — living stem ── */
 @keyframes roseSway {
   0%   { transform: rotate(0deg); }
-  18%  { transform: rotate(1.2deg); }
-  45%  { transform: rotate(-0.7deg); }
+  18%  { transform: rotate(1.1deg); }
+  46%  { transform: rotate(-0.6deg); }
   72%  { transform: rotate(0.4deg); }
   100% { transform: rotate(0deg); }
 }
 
 /* ── Fade up ── */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0);    }
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Wrapping animation: paper folds over stems ── */
+/* ── Wrap close animation ── */
 @keyframes wrapClose {
-  0%   { transform: scaleX(1)    scaleY(1)    translateY(0);    opacity: 1; }
-  25%  { transform: scaleX(0.90) scaleY(1.08) translateY(-5px); }
-  55%  { transform: scaleX(0.74) scaleY(1.12) translateY(-8px); }
-  78%  { transform: scaleX(0.80) scaleY(1.05) translateY(-4px); }
-  100% { transform: scaleX(1)    scaleY(1)    translateY(0);    opacity: 1; }
+  0%   { transform: scaleX(1)    scaleY(1)    translateY(0);     opacity: 1; }
+  22%  { transform: scaleX(0.88) scaleY(1.10) translateY(-6px); }
+  52%  { transform: scaleX(0.72) scaleY(1.16) translateY(-9px); }
+  76%  { transform: scaleX(0.80) scaleY(1.06) translateY(-4px); }
+  100% { transform: scaleX(1)    scaleY(1)    translateY(0);     opacity: 1; }
 }
 
 /* ── Showcase entry ── */
 @keyframes showcaseIn {
-  from { opacity: 0; transform: scale(0.92); }
+  from { opacity: 0; transform: scale(0.94); }
   to   { opacity: 1; transform: scale(1); }
 }
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar {
-  width: 3px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.10);
-  border-radius: 2px;
-}
+/* ── Scrollbar — light panels ── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.09); border-radius: 2px; }
 
-/* ── Range input — light theme ── */
+/* ── Range input — light panels ── */
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
   height: 2px;
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.11);
   border-radius: 1px;
   outline: none;
   cursor: pointer;
 }
 input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
-  background: #1A1816;
-  border: 2px solid #F5F3F0;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.20);
+  background: #111110;
+  border: 2px solid #F7F7F5;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.18);
   cursor: pointer;
   transition: transform 0.15s;
 }
-input[type='range']::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-}
+input[type='range']::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
-/* ── Textarea ── */
-textarea {
-  font-family: inherit;
-}
+textarea { font-family: inherit; }

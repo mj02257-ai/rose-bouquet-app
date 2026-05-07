@@ -14,149 +14,121 @@ function adj(hex: string, delta: number): string {
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
-  const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v + delta))).toString(16).padStart(2, '0');
-  return `#${clamp(r)}${clamp(g)}${clamp(b)}`;
+  const c = (v: number) => Math.max(0, Math.min(255, Math.round(v + delta))).toString(16).padStart(2, '0');
+  return `#${c(r)}${c(g)}${c(b)}`;
 }
 
-function mix(hex: string, white: number): string {
+function blend(hex: string, toward: number): string {
   const h = hex.replace('#', '');
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
-  const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
-  return `#${clamp(r + (255 - r) * white)}${clamp(g + (255 - g) * white)}${clamp(b + (255 - b) * white)}`;
+  const c = (v: number) => Math.max(0, Math.min(255, Math.round(v + (toward - v) * 0.82))).toString(16).padStart(2, '0');
+  return `#${c(r)}${c(g)}${c(b)}`;
 }
 
-// Outer back petal — wide, ruffled tip, sweeps broadly outward
-const P_OUT = [
-  'M 50,44',
-  'C 43,43 32,38 24,30',
-  'C 16,22 15,11 22,5',
-  'C 26,1 31,0 37,0',
-  'C 41,0 45,1 47.5,2.5',
-  'Q 50,1.5 52.5,2.5',
-  'C 55,1 59,0 63,0',
-  'C 69,0 74,1 78,5',
-  'C 85,11 84,22 76,30',
-  'C 68,38 57,43 50,44 Z',
-].join(' ');
+/*
+ * Rose viewed from ~35° above and slightly front-right.
+ * 16 unique petal paths rendered back→front (painter's algorithm).
+ * Light source: upper-right (78, 8) in userSpaceOnUse.
+ * Flower center: CX=50, CY=30. Stem: y=50→y=125.
+ */
 
-// Outer front petal (offset 36°) — slightly shorter, more curved
-const P_OUT2 = [
-  'M 50,44',
-  'C 44,43 34,39 28,32',
-  'C 22,25 21,16 26,9',
-  'C 29,4 34,2 40,2',
-  'C 43,1.5 46.5,2 48.5,3',
-  'Q 50,2 51.5,3',
-  'C 53.5,2 57,1.5 60,2',
-  'C 66,2 71,4 74,9',
-  'C 79,16 78,25 72,32',
-  'C 66,39 56,43 50,44 Z',
-].join(' ');
+// ── BACK PETALS (3) — upper area, perspective-foreshortened ─────────────
+// Tips reach y=2–8, compressed by viewing angle. Mostly in shadow.
 
-// Mid petal — cupped, medium height, visible veining via stroke
-const P_MID = [
-  'M 50,44',
-  'C 44,43 36,40 30,34',
-  'C 24,28 23,20 27,14',
-  'C 30,9 35,7 40,7',
-  'C 43,6.5 46.5,7 48.5,8',
-  'Q 50,7 51.5,8',
-  'C 53.5,7 57,6.5 60,7',
-  'C 65,7 70,9 73,14',
-  'C 77,20 76,28 70,34',
-  'C 64,40 56,43 50,44 Z',
-].join(' ');
+const P_B1 = // upper-left
+  'M 50,30 C 44,26 32,18 24,12 C 20,8 22,4 28,5 C 32,5 38,10 42,18 C 46,24 49,28 50,30 Z';
 
-// Inner petal — narrow, upright, tightly rolled look
-const P_INN = [
-  'M 50,44',
-  'C 46,43 39,41 36,37',
-  'C 33,33 32,27 35,22',
-  'C 37,18 41,16 45,16',
-  'C 47,15.5 48.5,16 49.5,16.5',
-  'Q 50,16 50.5,16.5',
-  'C 51.5,16 53,15.5 55,16',
-  'C 59,16 63,18 65,22',
-  'C 68,27 67,33 64,37',
-  'C 61,41 54,43 50,44 Z',
-].join(' ');
+const P_B2 = // upper-center, straight up
+  'M 50,30 C 46,24 42,14 42,6 C 42,2 46,1 50,2 C 54,1 58,2 58,6 C 58,14 54,24 50,30 Z';
 
-// Innermost — very tight, shows spiral curl on top
-const P_DEEP = [
-  'M 50,44',
-  'C 48,43.5 45,42.5 43.5,41',
-  'C 42,39.5 42,37.5 43,36',
-  'C 44,34.5 46,33.5 48,33',
-  'C 49,32.5 49.5,32.5 50,32.5',
-  'C 50.5,32.5 51,32.5 52,33',
-  'C 54,33.5 56,34.5 57,36',
-  'C 58,37.5 58,39.5 56.5,41',
-  'C 55,42.5 52,43.5 50,44 Z',
-].join(' ');
+const P_B3 = // upper-right — closest to light source, slightly more lit
+  'M 50,30 C 56,26 68,18 76,12 C 80,8 78,4 72,5 C 68,5 62,10 58,18 C 54,24 51,28 50,30 Z';
 
-// Centre bud — tiny, deeply shaded
-const P_BUD = [
-  'M 50,44',
-  'C 49,43.5 48,43 47.5,41.5',
-  'C 47,40 47.5,38 48.5,37.5',
-  'C 49,37 49.5,37 50,37',
-  'C 50.5,37 51,37 51.5,37.5',
-  'C 52.5,38 53,40 52.5,41.5',
-  'C 52,43 51,43.5 50,44 Z',
-].join(' ');
+// ── MID PETALS (2) — sides, horizontal spread ───────────────────────────
+// Wide petals going left and right. Left is in shadow, right is lit.
 
-// Sepal — pointed green leaf at flower base
-const P_SEP = [
-  'M 50,45',
-  'C 49.5,47 48.5,50 48.5,53',
-  'C 48.5,55 49.2,57 50,58',
-  'C 50.8,57 51.5,55 51.5,53',
-  'C 51.5,50 50.5,47 50,45 Z',
-].join(' ');
+const P_M1 = // left — shadow side
+  'M 50,32 C 42,30 26,26 16,22 C 8,18 6,12 12,10 C 18,8 28,14 38,22 C 44,26 48,30 50,32 Z';
 
-// Leaf shape — positioned via group translate+rotate
-const P_LEAF = [
-  'M 0,0',
-  'C 6,-5 14,-11 20,-17',
-  'C 24,-20 26,-21 24,-17',
-  'C 22,-14 16,-9 12,-5',
-  'C 15,-6 21,-10 22,-6',
-  'C 23,-2 19,4 15,6',
-  'C 11,8 5,5 2,2',
-  'C 1,1 0.5,0.5 0,0 Z',
-].join(' ');
+const P_M2 = // right — lit side (facing the upper-right light source)
+  'M 50,32 C 58,30 74,26 84,22 C 92,18 94,12 88,10 C 82,8 72,14 62,22 C 56,26 52,30 50,32 Z';
+
+// ── FRONT PETALS (3) — lower area, most prominent, facing viewer ─────────
+
+const P_F1 = // lower-left, drops down and left
+  'M 50,32 C 44,36 34,42 24,48 C 16,52 12,56 14,60 C 16,64 22,64 28,60 C 34,56 42,48 48,38 C 49,35 50,33 50,32 Z';
+
+const P_F2 = // lower-center, largest petal, the "show" petal
+  'M 50,32 C 46,38 42,46 42,52 C 42,57 45,60 50,60 C 55,60 58,57 58,52 C 58,46 54,38 50,32 Z';
+
+const P_F3 = // lower-right, lit
+  'M 50,32 C 56,36 66,42 76,48 C 84,52 88,56 86,60 C 84,64 78,64 72,60 C 66,56 58,48 52,38 C 51,35 50,33 50,32 Z';
+
+// ── INNER PETALS (4) — smaller, cupped, partially in shadow ─────────────
+
+const P_I1 = // inner-left
+  'M 50,30 C 44,28 38,24 34,20 C 30,16 30,12 34,12 C 38,12 42,16 46,22 C 48,26 49,28 50,30 Z';
+
+const P_I2 = // inner-right, slight light catch
+  'M 50,30 C 56,28 62,24 66,20 C 70,16 70,12 66,12 C 62,12 58,16 54,22 C 52,26 51,28 50,30 Z';
+
+const P_I3 = // inner-upper (behind everything except center)
+  'M 50,30 C 48,26 46,20 46,14 C 46,10 48,8 50,8 Q 52,8 54,14 C 54,20 52,26 50,30 Z';
+
+const P_I4 = // inner-lower, faces viewer, small
+  'M 50,32 C 47,36 44,42 44,46 Q 50,49 56,46 C 56,42 53,36 50,32 Z';
+
+// ── CENTER PETALS (3) — tight spiral curls ───────────────────────────────
+
+const P_C1 = // center-left curl
+  'M 50,30 C 47,28 44,24 45,20 C 46,17 48,16 50,18 C 50,21 50,25 50,30 Z';
+
+const P_C2 = // center-right curl, edge catches light
+  'M 50,30 C 53,28 56,24 55,20 C 54,17 52,16 50,18 C 50,21 50,25 50,30 Z';
+
+const P_C3 = // center-top, narrow upright
+  'M 50,30 C 49,27 48,24 49,21 C 49.5,19 50.5,19 51,21 C 52,24 51,27 50,30 Z';
+
+// ── CENTRE BUD ───────────────────────────────────────────────────────────
+const P_BUD = 'M 50,30 C 49.2,29 49,27.5 50,26.5 C 51,27.5 50.8,29 50,30 Z';
+
+// ── SEPAL — narrow pointed green leaf at flower base ─────────────────────
+const P_SEP = 'M 50,34 C 49.5,36 49,39 49,42 C 49,44 49.4,46 50,47 C 50.6,46 51,44 51,42 C 51,39 50.5,36 50,34 Z';
+
+// ── LEAF ─────────────────────────────────────────────────────────────────
+const P_LEAF = 'M 0,0 C 6,-5 14,-11 20,-17 C 24,-20 26,-21 24,-17 C 22,-14 16,-9 12,-5 C 15,-6 21,-10 22,-6 C 23,-2 19,4 15,6 C 11,8 5,5 2,2 C 1,1 0.5,0.5 0,0 Z';
+
+// ─────────────────────────────────────────────────────────────────────────
 
 export default function RoseObject({ roseType, size = 60, className = '' }: RoseObjectProps) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const base = roseType.color;
 
-  // 6-level palette: bright highlight → deep shadow
-  const specular = mix(base, 0.88);   // near-white specular on wet petals
-  const bright   = adj(base, 68);     // lit highlight
-  const light    = adj(base, 36);     // lit face
-  const mid      = base;              // body colour
-  const dark     = adj(base, -42);    // shadow face
-  const deep     = adj(base, -80);    // deep shadow / fold
-  const deepest  = adj(base, -110);   // darkest crease
+  // 7-level palette from base color
+  const specular = blend(base, 255);   // near-white wet-petal specular
+  const bright   = adj(base,  72);
+  const light    = adj(base,  40);
+  const mid      = base;
+  const dark     = adj(base, -44);
+  const deep     = adj(base, -82);
+  const deepest  = adj(base, -112);
 
   const stemC  = '#3D6E28';
   const stemDk = '#1E3D10';
   const leafC  = '#2C5B18';
 
   // Gradient IDs
-  const GR  = `${uid}gr`;   // outer petals — upper-right directional light
-  const GR2 = `${uid}gr2`;  // front outer petals — slightly different angle
-  const GM  = `${uid}gm`;   // mid petals
-  const GI  = `${uid}gi`;   // inner petals
-  const GC  = `${uid}gc`;   // centre bud
-  const GS  = `${uid}gs`;   // stem
-  const GL  = `${uid}gl`;   // leaf
-  const GV  = `${uid}gv`;   // petal vein/crease overlay gradient
-  const FD  = `${uid}fd`;   // drop-shadow filter
-
-  const CX = 50, CY = 40;
+  const gBack  = `${uid}bk`;
+  const gMidSh = `${uid}ms`;
+  const gMidLt = `${uid}ml`;
+  const gFront = `${uid}fr`;
+  const gInner = `${uid}in`;
+  const gCtr   = `${uid}ct`;
+  const GS     = `${uid}gs`;
+  const GL     = `${uid}gl`;
+  const FD     = `${uid}fd`;
 
   return (
     <svg
@@ -168,58 +140,63 @@ export default function RoseObject({ roseType, size = 60, className = '' }: Rose
       style={{ overflow: 'visible' }}
     >
       <defs>
-        {/* Drop shadow for entire flower — adds depth and ground lift */}
-        <filter id={FD} x="-25%" y="-25%" width="150%" height="160%">
-          <feDropShadow dx="1" dy="3" stdDeviation="3.5" floodColor={deepest} floodOpacity="0.42" />
+        {/* Drop shadow for the whole flower head */}
+        <filter id={FD} x="-30%" y="-30%" width="160%" height="175%">
+          <feDropShadow dx="0.5" dy="2.5" stdDeviation="3" floodColor={deepest} floodOpacity="0.40" />
         </filter>
 
-        {/*
-         * Upper-right light source (cx=72, cy=8) — mimics sunlight from above-right.
-         * gradientUnits="userSpaceOnUse" keeps the angle fixed for all rotated petals.
-         */}
-        <radialGradient id={GR} gradientUnits="userSpaceOnUse" cx="72" cy="8" r="82">
-          <stop offset="0%"   stopColor={specular} stopOpacity="0.9" />
-          <stop offset="10%"  stopColor={bright} />
-          <stop offset="28%"  stopColor={light} />
-          <stop offset="52%"  stopColor={mid} />
-          <stop offset="76%"  stopColor={dark} />
-          <stop offset="100%" stopColor={deep} />
-        </radialGradient>
+        {/* All petal gradients share light source at (78, 8) userSpaceOnUse */}
 
-        {/* Front outer petals — lit from slightly more forward angle */}
-        <radialGradient id={GR2} gradientUnits="userSpaceOnUse" cx="66" cy="12" r="78">
-          <stop offset="0%"   stopColor={bright} />
-          <stop offset="22%"  stopColor={light} />
-          <stop offset="50%"  stopColor={mid} />
-          <stop offset="78%"  stopColor={dark} />
-          <stop offset="100%" stopColor={deep} />
-        </radialGradient>
-
-        {/* Mid petals — light comes more from center-top */}
-        <radialGradient id={GM} gradientUnits="userSpaceOnUse" cx="58" cy="16" r="66">
+        {/* Back petals — mostly in shadow */}
+        <radialGradient id={gBack} gradientUnits="userSpaceOnUse" cx="78" cy="8" r="95">
           <stop offset="0%"   stopColor={light} />
-          <stop offset="25%"  stopColor={mid} />
-          <stop offset="55%"  stopColor={dark} />
-          <stop offset="80%"  stopColor={deep} />
-          <stop offset="100%" stopColor={deepest} />
+          <stop offset="35%"  stopColor={mid} />
+          <stop offset="65%"  stopColor={dark} />
+          <stop offset="100%" stopColor={deep} />
         </radialGradient>
 
-        {/* Inner petals — mostly in shadow */}
-        <radialGradient id={GI} gradientUnits="userSpaceOnUse" cx="48" cy="28" r="50">
+        {/* Mid-left petal — shadow side, away from light */}
+        <radialGradient id={gMidSh} gradientUnits="userSpaceOnUse" cx="78" cy="8" r="90">
           <stop offset="0%"   stopColor={mid} />
           <stop offset="35%"  stopColor={dark} />
-          <stop offset="65%"  stopColor={deep} />
+          <stop offset="70%"  stopColor={deep} />
           <stop offset="100%" stopColor={deepest} />
         </radialGradient>
 
-        {/* Centre bud — very dark, nearly black at core */}
-        <radialGradient id={GC} gradientUnits="userSpaceOnUse" cx="52" cy="38" r="14">
-          <stop offset="0%"   stopColor={dark} />
-          <stop offset="45%"  stopColor={deep} />
-          <stop offset="100%" stopColor={deepest} stopOpacity="0.97" />
+        {/* Mid-right petal — lit side, facing upper-right light source directly */}
+        <radialGradient id={gMidLt} gradientUnits="userSpaceOnUse" cx="78" cy="8" r="80">
+          <stop offset="0%"   stopColor={specular} stopOpacity="0.88" />
+          <stop offset="10%"  stopColor={bright} />
+          <stop offset="32%"  stopColor={light} />
+          <stop offset="60%"  stopColor={mid} />
+          <stop offset="90%"  stopColor={dark} />
         </radialGradient>
 
-        {/* Stem — cylindrical shading */}
+        {/* Front petals — facing viewer, moderate illumination from upper-right */}
+        <radialGradient id={gFront} gradientUnits="userSpaceOnUse" cx="78" cy="8" r="88">
+          <stop offset="0%"   stopColor={bright} />
+          <stop offset="22%"  stopColor={light} />
+          <stop offset="52%"  stopColor={mid} />
+          <stop offset="82%"  stopColor={dark} />
+          <stop offset="100%" stopColor={deep} />
+        </radialGradient>
+
+        {/* Inner petals — mostly in shadow from outer petals */}
+        <radialGradient id={gInner} gradientUnits="userSpaceOnUse" cx="62" cy="16" r="58">
+          <stop offset="0%"   stopColor={mid} />
+          <stop offset="38%"  stopColor={dark} />
+          <stop offset="72%"  stopColor={deep} />
+          <stop offset="100%" stopColor={deepest} />
+        </radialGradient>
+
+        {/* Center/bud — deep shadow of the spiral interior */}
+        <radialGradient id={gCtr} gradientUnits="userSpaceOnUse" cx="52" cy="22" r="28">
+          <stop offset="0%"   stopColor={dark} />
+          <stop offset="55%"  stopColor={deep} />
+          <stop offset="100%" stopColor={deepest} stopOpacity="0.96" />
+        </radialGradient>
+
+        {/* Stem */}
         <linearGradient id={GS} x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%"   stopColor={stemDk} />
           <stop offset="30%"  stopColor={stemC} />
@@ -227,187 +204,130 @@ export default function RoseObject({ roseType, size = 60, className = '' }: Rose
           <stop offset="100%" stopColor={stemDk} />
         </linearGradient>
 
-        {/* Leaf — directional light */}
+        {/* Leaf */}
         <radialGradient id={GL} gradientUnits="userSpaceOnUse" cx="6" cy="-8" r="24">
-          <stop offset="0%"   stopColor={adj(leafC, 38)} />
-          <stop offset="50%"  stopColor={leafC} />
+          <stop offset="0%"   stopColor={adj(leafC, 36)} />
+          <stop offset="52%"  stopColor={leafC} />
           <stop offset="100%" stopColor={stemDk} />
         </radialGradient>
-
-        {/* Petal crease overlay — adds fold depth */}
-        <linearGradient id={GV} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%"   stopColor={deep} stopOpacity="0.14" />
-          <stop offset="50%"  stopColor={deep} stopOpacity="0.06" />
-          <stop offset="100%" stopColor={deep} stopOpacity="0.18" />
-        </linearGradient>
       </defs>
 
-      {/* ── STEM ────────────────────────────────────────────── */}
+      {/* ── STEM ──────────────────────────────────────────────── */}
       <path
-        d="M 50,54 C 50.5,66 49.5,78 48.5,90 C 47.5,102 48,114 50,126"
+        d="M 50,50 C 50,62 49,74 48,86 C 47,98 48,110 50,124"
         stroke={`url(#${GS})`}
-        strokeWidth="3"
+        strokeWidth="2.8"
         fill="none"
         strokeLinecap="round"
       />
       {/* Stem highlight */}
       <path
-        d="M 51,54 C 51.5,66 50.5,78 49.5,90 C 48.5,102 48.8,113 50.5,125"
-        stroke={adj(stemC, 28)}
-        strokeWidth="0.7"
+        d="M 51,50 C 51.5,62 50.5,74 49.5,86 C 48.5,98 49,109 50.5,122"
+        stroke={adj(stemC, 26)}
+        strokeWidth="0.6"
         fill="none"
         strokeLinecap="round"
-        opacity="0.38"
+        opacity="0.36"
       />
 
       {/* Thorns */}
-      <path d="M 49.5,72 L 42,67 L 49.5,73.5" fill={stemDk} opacity="0.55" />
-      <path d="M 49.5,99 L 57,94 L 49.5,100.5" fill={stemDk} opacity="0.55" />
+      <path d="M 49.5,70 L 42,65 L 49.5,71.5" fill={stemDk} opacity="0.55" />
+      <path d="M 49,97 L 57,92 L 49,98.5" fill={stemDk} opacity="0.55" />
 
-      {/* ── LEAVES ──────────────────────────────────────────── */}
-      <g transform="translate(53, 84) rotate(-34)">
-        <path d={P_LEAF} fill={`url(#${GL})`} opacity="0.93" />
-        <path d="M 0,0 C 8,-6 16,-12 22,-18" stroke={stemDk} strokeWidth="0.52" fill="none" opacity="0.50" />
-        <path d="M 5,-3 L 10,-11" stroke={stemDk} strokeWidth="0.36" fill="none" opacity="0.35" />
-        <path d="M 12,-9 L 16,-16" stroke={stemDk} strokeWidth="0.36" fill="none" opacity="0.30" />
+      {/* ── LEAVES ────────────────────────────────────────────── */}
+      <g transform="translate(52, 82) rotate(-34)">
+        <path d={P_LEAF} fill={`url(#${GL})`} opacity="0.92" />
+        <path d="M 0,0 C 8,-6 16,-12 22,-18" stroke={stemDk} strokeWidth="0.5" fill="none" opacity="0.48" />
+        <path d="M 5,-3 L 10,-11" stroke={stemDk} strokeWidth="0.35" fill="none" opacity="0.32" />
       </g>
-      <g transform="translate(47, 110) rotate(212)">
+      <g transform="translate(47, 108) rotate(212)">
         <path d={P_LEAF} fill={`url(#${GL})`} opacity="0.85" />
-        <path d="M 0,0 C 8,-6 16,-12 22,-18" stroke={stemDk} strokeWidth="0.52" fill="none" opacity="0.45" />
-        <path d="M 5,-3 L 10,-11" stroke={stemDk} strokeWidth="0.36" fill="none" opacity="0.30" />
+        <path d="M 0,0 C 8,-6 16,-12 22,-18" stroke={stemDk} strokeWidth="0.5" fill="none" opacity="0.42" />
       </g>
 
-      {/* ── All petals wrapped in drop-shadow filter ─────────── */}
+      {/* ── FLOWER — all petals wrapped in drop-shadow filter ──── */}
       <g filter={`url(#${FD})`}>
-        {/* ── OUTER BACK PETALS (5 × 72°) — furthest from viewer */}
-        {[0, 72, 144, 216, 288].map((a) => (
-          <g key={a} transform={`rotate(${a}, ${CX}, ${CY})`}>
-            <path d={P_OUT} fill={`url(#${GR})`} opacity="0.78" />
-            {/* Petal crease fold */}
-            <path
-              d="M 50,44 C 44,38 32,28 22,22"
-              stroke={deep}
-              strokeWidth="0.6"
-              fill="none"
-              opacity="0.16"
-            />
-            {/* Ruffled tip specular */}
-            <path
-              d="M 50,1.5 Q 55,0 60,1.5"
-              stroke={bright}
-              strokeWidth="0.8"
-              fill="none"
-              strokeLinecap="round"
-              opacity="0.25"
-            />
-          </g>
-        ))}
 
-        {/* ── OUTER FRONT PETALS (5, offset 36°) ─────────────── */}
-        {[36, 108, 180, 252, 324].map((a) => (
-          <g key={a} transform={`rotate(${a}, ${CX}, ${CY})`}>
-            <path d={P_OUT2} fill={`url(#${GR2})`} opacity="0.86" />
-            <path
-              d="M 50,44 C 45,39 36,30 28,24"
-              stroke={deep}
-              strokeWidth="0.55"
-              fill="none"
-              opacity="0.14"
-            />
-          </g>
-        ))}
+        {/* ── Layer 1: Back petals (rendered first, behind everything) */}
+        <path d={P_B1} fill={`url(#${gBack})`}  opacity="0.74" />
+        <path d={P_B2} fill={`url(#${gBack})`}  opacity="0.76" />
+        <path d={P_B3} fill={`url(#${gMidLt})`} opacity="0.79" />
 
-        {/* ── MID PETALS (5, offset 18°) ─────────────────────── */}
-        {[18, 90, 162, 234, 306].map((a) => (
-          <g key={a} transform={`rotate(${a}, ${CX}, ${CY})`}>
-            <path d={P_MID} fill={`url(#${GM})`} opacity="0.91" />
-            {/* Mid-rib vein line */}
-            <path
-              d="M 50,44 C 50,38 50.5,28 50,20"
-              stroke={deep}
-              strokeWidth="0.4"
-              fill="none"
-              opacity="0.18"
-            />
-          </g>
-        ))}
+        {/* ── Layer 2: Mid petals (side-facing) */}
+        <path d={P_M1} fill={`url(#${gMidSh})`} opacity="0.82" />
+        <path d={P_M2} fill={`url(#${gMidLt})`} opacity="0.86" />
 
-        {/* ── INNER PETALS (4 × 90°) ─────────────────────────── */}
-        {[0, 90, 180, 270].map((a) => (
-          <path
-            key={a}
-            d={P_INN}
-            fill={`url(#${GI})`}
-            opacity="0.94"
-            transform={`rotate(${a}, ${CX}, ${CY})`}
-          />
-        ))}
+        {/* ── Layer 3: Front petals (most prominent, face the viewer) */}
+        <path d={P_F1} fill={`url(#${gFront})`} opacity="0.88" />
+        <path d={P_F2} fill={`url(#${gFront})`} opacity="0.92" />
+        <path d={P_F3} fill={`url(#${gFront})`} opacity="0.90" />
 
-        {/* ── INNERMOST PETALS (3 × 120°) ────────────────────── */}
-        {[0, 120, 240].map((a) => (
-          <path
-            key={a}
-            d={P_DEEP}
-            fill={`url(#${GI})`}
-            opacity="0.98"
-            transform={`rotate(${a}, ${CX}, ${CY})`}
-          />
-        ))}
+        {/* Inter-petal shadow creases */}
+        <path d="M 50,30 C 44,36 34,44 22,52" stroke={deepest} strokeWidth="0.55" fill="none" opacity="0.16" />
+        <path d="M 50,30 C 56,36 66,44 78,52" stroke={deepest} strokeWidth="0.55" fill="none" opacity="0.16" />
+        <path d="M 50,30 C 50,38 50,48 50,58"  stroke={deepest} strokeWidth="0.45" fill="none" opacity="0.12" />
 
-        {/* ── CENTRE BUD ──────────────────────────────────────── */}
-        <path d={P_BUD} fill={`url(#${GC})`} />
+        {/* ── Layer 4: Inner petals */}
+        <path d={P_I3} fill={`url(#${gBack})`}  opacity="0.86" />
+        <path d={P_I1} fill={`url(#${gInner})`} opacity="0.90" />
+        <path d={P_I2} fill={`url(#${gInner})`} opacity="0.88" />
+        <path d={P_I4} fill={`url(#${gInner})`} opacity="0.84" />
 
-        {/* Spiral curl — coiled inner petal catching edge light */}
+        {/* Inner shadow lines — petal folds */}
+        <path d="M 50,30 C 44,26 36,20 34,14" stroke={deepest} strokeWidth="0.45" fill="none" opacity="0.18" />
+        <path d="M 50,30 C 56,26 64,20 66,14" stroke={deepest} strokeWidth="0.45" fill="none" opacity="0.18" />
+
+        {/* ── Layer 5: Center petals (tight spiral) */}
+        <path d={P_C1}  fill={`url(#${gInner})`} opacity="0.94" />
+        <path d={P_C2}  fill={`url(#${gCtr})`}   opacity="0.94" />
+        <path d={P_C3}  fill={`url(#${gCtr})`}   opacity="0.97" />
+
+        {/* ── Bud */}
+        <path d={P_BUD} fill={`url(#${gCtr})`}   opacity="1.00" />
+
+        {/* Spiral curl line in center */}
         <path
-          d="M 48,42 C 48.8,40 50,38.5 51.5,38 C 50.8,37.4 49.4,37.3 48.8,38"
+          d="M 48.5,28 C 49.2,26.5 50.2,25.5 51,25 C 50.5,24.6 49.5,24.6 49,25"
           stroke={light}
-          strokeWidth="0.6"
+          strokeWidth="0.5"
           fill="none"
-          opacity="0.28"
-          strokeLinecap="round"
-        />
-        <path
-          d="M 52,42.5 C 51.2,41 50.5,39.5 51,38.5"
-          stroke={mid}
-          strokeWidth="0.45"
-          fill="none"
-          opacity="0.22"
+          opacity="0.24"
           strokeLinecap="round"
         />
       </g>
 
-      {/* ── SEPALS (5 × 72°, around flower base) ────────────── */}
+      {/* ── SEPALS (5 × 72° around flower base at y=34) ────────── */}
       {[0, 72, 144, 216, 288].map((a) => (
         <path
           key={a}
           d={P_SEP}
           fill="#4C7E3A"
-          opacity="0.88"
-          transform={`rotate(${a}, ${CX}, 45)`}
+          opacity="0.86"
+          transform={`rotate(${a}, 50, 34)`}
         />
       ))}
 
-      {/* ── SPECULAR HIGHLIGHTS — wet-look gloss ────────────── */}
-      {/* Primary specular — upper-right petal face */}
+      {/* ── SPECULAR HIGHLIGHTS — wet-petal gloss ───────────────── */}
+      {/* Primary: upper-right petal face (near light source) */}
       <ellipse
-        cx="66" cy="14" rx="6.5" ry="3.2"
+        cx="64" cy="13" rx="6" ry="2.8"
         fill={specular}
-        opacity="0.22"
-        transform="rotate(-38, 66, 14)"
+        opacity="0.20"
+        transform="rotate(-40, 64, 13)"
       />
-      {/* Secondary specular — offset highlight */}
+      {/* Secondary: mid-right petal edge */}
       <ellipse
-        cx="56" cy="9" rx="4" ry="1.8"
+        cx="74" cy="20" rx="3.5" ry="1.6"
         fill={specular}
-        opacity="0.17"
-        transform="rotate(-24, 56, 9)"
+        opacity="0.15"
+        transform="rotate(-22, 74, 20)"
       />
-      {/* Tiny tertiary glint */}
+      {/* Tiny glint */}
       <ellipse
-        cx="72" cy="20" rx="2.2" ry="1"
+        cx="58" cy="8" rx="2" ry="0.9"
         fill="white"
-        opacity="0.13"
-        transform="rotate(-15, 72, 20)"
+        opacity="0.14"
+        transform="rotate(-12, 58, 8)"
       />
     </svg>
   );

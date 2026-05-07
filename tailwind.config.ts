@@ -9,14 +9,15 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-space)', 'var(--font-noto-kr)', 'Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
-        cream: '#F0EDE8',
-        'warm-gray': '#8A8680',
-        accent: '#C8A882',
-        surface: '#111111',
-        'surface-raised': '#161616',
+        canvas: '#0A0A09',
+        silver: '#F2F2F0',
+      },
+      letterSpacing: {
+        editorial: '0.06em',
+        wide2: '0.08em',
       },
     },
   },

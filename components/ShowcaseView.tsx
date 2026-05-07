@@ -105,8 +105,8 @@ export default function ShowcaseView({ bouquetData, wrapper, onClose, onSend }: 
       {/* ── Header ────────────────────────────────────────── */}
       <div className="flex-shrink-0 flex items-center justify-between px-5 h-14 border-b border-white/[0.06]">
         <div>
-          <p className="text-[11px] text-white/25 tracking-wide">완성된 꽃다발</p>
-          <p className="text-[12px] text-white/65 font-medium mt-0.5">
+          <p className="text-[10px] text-white/22 tracking-[0.08em] uppercase font-light">완성된 꽃다발</p>
+          <p className="text-[12px] text-white/58 font-medium mt-0.5 tracking-wide">
             {bouquetData.roses.length}송이 · {wrapper.nameKo} 포장
           </p>
         </div>

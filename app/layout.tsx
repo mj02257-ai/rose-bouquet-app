@@ -1,11 +1,19 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Space_Grotesk, Noto_Sans_KR } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({
-  subsets: ['latin', 'latin-ext'],
-  variable: '--font-inter',
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space',
   display: 'swap',
+  weight: ['300', '400', '500', '600', '700'],
+});
+
+const notoSansKR = Noto_Sans_KR({
+  subsets: ['latin'],
+  variable: '--font-noto-kr',
+  display: 'swap',
+  weight: ['300', '400', '500', '700'],
 });
 
 export const metadata: Metadata = {
@@ -16,7 +24,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body className={`${inter.variable} font-sans bg-[#0A0A0A] text-[#F0EDE8] antialiased`}>
+      <body className={`${spaceGrotesk.variable} ${notoSansKR.variable} font-sans bg-[#F7F7F5] text-[#111110] antialiased`}>
         {children}
       </body>
     </html>
