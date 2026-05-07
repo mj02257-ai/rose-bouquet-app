@@ -4,75 +4,79 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { decodeBouquet } from '@/lib/bouquetEncoding';
-import { ROSES } from '@/lib/roseData';
+import { ROSES, WRAPPERS } from '@/lib/roseData';
 import RoseObject from '@/components/RoseObject';
+import BouquetWrapper from '@/components/BouquetWrapper';
 
 function ShareView() {
   const searchParams = useSearchParams();
   const encoded = searchParams.get('data');
   const data = encoded ? decodeBouquet(encoded) : null;
 
+  const wrapper = WRAPPERS.find((w) => w.id === data?.wrapperId) ?? WRAPPERS[0];
+
   if (!data) {
     return (
       <div className="min-h-screen bg-[#080808] flex flex-col items-center justify-center gap-4">
-        <p className="text-gray-500 text-sm">Bouquet not found or link is invalid.</p>
-        <Link href="/" className="px-4 py-2 rounded-full bg-[#F5F0E8] text-black text-sm">
-          Create your own
+        <p className="text-white/30 text-sm">꽃다발을 찾을 수 없거나 링크가 유효하지 않습니다.</p>
+        <Link href="/" className="px-4 py-2 rounded-sm bg-[#F0EDE8] text-[#0A0A0A] text-sm font-medium hover:bg-white transition-colors">
+          나만의 꽃다발 만들기
         </Link>
       </div>
     );
   }
 
+  const sortedRoses = [...data.roses].sort((a, b) => a.zIndex - b.zIndex);
+
   return (
-    <div className="min-h-screen bg-[#080808] flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center p-8">
       {/* Grid bg */}
       <div
         className="fixed inset-0 opacity-10 pointer-events-none"
         style={{
-          backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.07) 1px, transparent 1px)`,
           backgroundSize: '40px 40px',
         }}
       />
 
-      <div className="relative w-full max-w-lg">
+      <div className="relative w-full max-w-sm">
         {data.recipientName && (
-          <p className="text-xs text-gray-500 tracking-widest uppercase mb-2 text-center">For</p>
+          <p className="text-[10px] text-white/25 tracking-widest uppercase mb-1.5 text-center">For</p>
         )}
         {data.recipientName && (
-          <h1 className="text-2xl font-light text-cream text-center mb-8">{data.recipientName}</h1>
+          <h1 className="text-xl font-light text-cream text-center mb-6">{data.recipientName}</h1>
         )}
 
-        {/* Canvas */}
-        <div className="relative w-full h-80 bg-black/20 rounded-2xl border border-white/5 mb-6 overflow-hidden">
-          {/* Bouquet base */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-48 h-32 pointer-events-none">
-            <svg viewBox="0 0 200 130" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="wrap-grad-share" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#3D2B1F" />
-                  <stop offset="50%" stopColor="#5C3D2E" />
-                  <stop offset="100%" stopColor="#2D1F14" />
-                </linearGradient>
-              </defs>
-              <path d="M 60 130 L 80 40 L 120 40 L 140 130 Z" fill="url(#wrap-grad-share)" />
-              <path d="M 60 130 L 80 40 L 100 60 L 80 130 Z" fill="rgba(0,0,0,0.2)" />
-              <ellipse cx="100" cy="42" rx="22" ry="8" fill="#8B6355" opacity="0.8"/>
-            </svg>
+        {/* Bouquet canvas */}
+        <div className="relative w-full bg-black/20 border border-white/[0.06] mb-5 overflow-hidden"
+             style={{ height: '320px' }}>
+          {/* Ambient glow */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `radial-gradient(ellipse at 50% 60%, ${wrapper.paperColor}12 0%, transparent 65%)`,
+            }}
+          />
+
+          {/* Wrapper */}
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none">
+            <BouquetWrapper wrapper={wrapper} width={196} height={216} />
           </div>
 
-          {data.roses.map((rose) => {
+          {/* Roses */}
+          {sortedRoses.map((rose) => {
             const roseType = ROSES.find((r) => r.id === rose.roseTypeId);
             if (!roseType) return null;
             return (
               <div
                 key={rose.id}
-                className="absolute"
+                className="absolute pointer-events-none"
                 style={{
                   left: `${rose.x}%`,
                   top: `${rose.y}%`,
                   transform: `translate(-50%, -50%) scale(${rose.scale}) rotate(${rose.rotation}deg)`,
                   zIndex: rose.zIndex,
-                  filter: `drop-shadow(0 2px 6px rgba(0,0,0,0.4))`,
+                  filter: `drop-shadow(0 2px 8px rgba(0,0,0,0.5))`,
                 }}
               >
                 <RoseObject roseType={roseType} size={60} />
@@ -82,23 +86,23 @@ function ShareView() {
         </div>
 
         {data.message && (
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-4 text-center">
-            <p className="text-sm text-gray-300 italic leading-relaxed">&ldquo;{data.message}&rdquo;</p>
+          <div className="border border-white/[0.07] px-4 py-3 mb-4 text-center">
+            <p className="text-[12px] text-white/40 italic leading-relaxed">&ldquo;{data.message}&rdquo;</p>
           </div>
         )}
 
         {data.senderName && (
-          <p className="text-xs text-gray-500 text-center mb-8">— {data.senderName}</p>
+          <p className="text-[11px] text-white/25 text-center mb-6">— {data.senderName}</p>
         )}
 
         <div className="flex flex-col items-center gap-3">
           <Link
             href="/"
-            className="px-6 py-2.5 rounded-full bg-[#F5F0E8] text-black text-sm font-medium hover:bg-white transition-all"
+            className="px-6 py-2.5 bg-[#F0EDE8] text-[#0A0A0A] text-[12px] font-semibold hover:bg-white transition-colors rounded-sm"
           >
-            Create your own bouquet ✦
+            나도 꽃다발 만들기 →
           </Link>
-          <p className="text-[10px] text-gray-700">Made with Rosery</p>
+          <p className="text-[10px] text-white/15 tracking-wider">ANDZ · 성년의 날</p>
         </div>
       </div>
     </div>

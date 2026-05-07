@@ -14,6 +14,7 @@ interface PropertiesPanelProps {
   onBringForward: () => void;
   onSendBackward: () => void;
   onDelete: () => void;
+  onComplete: () => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -40,6 +41,7 @@ export default function PropertiesPanel({
   onBringForward,
   onSendBackward,
   onDelete,
+  onComplete,
   isOpen,
   onClose,
 }: PropertiesPanelProps) {
@@ -199,6 +201,23 @@ export default function PropertiesPanel({
               className="w-full bg-white/[0.03] border border-white/[0.08] rounded-sm px-3 py-2.5 text-[12px] text-white/60 placeholder-white/20 focus:outline-none focus:border-white/20 resize-none transition-colors leading-relaxed"
             />
           </div>
+        </div>
+
+        {/* ── Complete button — pinned at panel bottom ── */}
+        <div className="px-4 py-3 border-t border-white/[0.06] flex-shrink-0">
+          <button
+            onClick={onComplete}
+            disabled={totalRoses === 0}
+            className={`
+              w-full py-2.5 text-[12px] font-semibold rounded-sm transition-all duration-200
+              ${totalRoses > 0
+                ? 'bg-[#F0EDE8] text-[#0A0A0A] hover:bg-white cursor-pointer'
+                : 'bg-white/[0.05] text-white/20 cursor-not-allowed border border-white/[0.06]'
+              }
+            `}
+          >
+            {totalRoses > 0 ? `꽃다발 완성하기 →` : '장미를 추가해보세요'}
+          </button>
         </div>
       </aside>
     </>

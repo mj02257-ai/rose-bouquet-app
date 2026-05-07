@@ -4,15 +4,18 @@ import { useState } from 'react';
 import { RoseType } from '@/types/bouquet';
 import { ROSES, CATEGORIES, CategoryFilter } from '@/lib/roseData';
 import RoseCard from './RoseCard';
+import WrapperSelector from './WrapperSelector';
 
 interface RoseLibraryProps {
   onAddRose: (rose: RoseType) => void;
   onDragStart: (e: React.DragEvent, rose: RoseType) => void;
   isOpen: boolean;
   onClose: () => void;
+  wrapperId: string;
+  onWrapperChange: (id: string) => void;
 }
 
-export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose }: RoseLibraryProps) {
+export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose, wrapperId, onWrapperChange }: RoseLibraryProps) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('All');
 
@@ -106,7 +109,7 @@ export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose }:
         </div>
 
         {/* ── Rose list ── */}
-        <div className="flex-1 overflow-y-auto py-2 px-3 space-y-1">
+        <div className="flex-1 overflow-y-auto py-2 px-3 space-y-1 min-h-0">
           {filtered.length === 0 ? (
             <p className="text-[11px] text-white/20 text-center py-10">검색 결과 없음</p>
           ) : (
@@ -120,6 +123,9 @@ export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose }:
             ))
           )}
         </div>
+
+        {/* Wrapper selector — pinned at bottom of panel */}
+        <WrapperSelector selectedId={wrapperId} onChange={onWrapperChange} />
       </aside>
     </>
   );

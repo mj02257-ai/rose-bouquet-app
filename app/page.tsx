@@ -2,12 +2,13 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { BouquetRose, BouquetData, RoseType, HistoryEntry } from '@/types/bouquet';
-import { ROSES } from '@/lib/roseData';
+import { ROSES, WRAPPERS, DEFAULT_WRAPPER_ID } from '@/lib/roseData';
 import Header from '@/components/Header';
 import RoseLibrary from '@/components/RoseLibrary';
 import BouquetCanvas from '@/components/BouquetCanvas';
 import PropertiesPanel from '@/components/PropertiesPanel';
 import ShareModal from '@/components/ShareModal';
+import ShowcaseView from '@/components/ShowcaseView';
 
 let idCounter = 0;
 const generateId = () => `rose-${Date.now()}-${++idCounter}`;
@@ -18,7 +19,9 @@ export default function HomePage() {
   const [roses, setRoses] = useState<BouquetRose[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [wrapperId, setWrapperId] = useState(DEFAULT_WRAPPER_ID);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isShowcaseMode, setIsShowcaseMode] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
@@ -145,26 +148,28 @@ export default function HomePage() {
   const usedColors = Array.from(new Set(roses.map((r) => r.roseTypeId)))
     .map((id) => ROSES.find((r) => r.id === id)?.color || '')
     .filter(Boolean);
+  const selectedWrapper = WRAPPERS.find((w) => w.id === wrapperId) ?? WRAPPERS[0];
 
-  const bouquetData: BouquetData = { roses, message };
+  const bouquetData: BouquetData = { roses, wrapperId, message };
 
   // Save to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('rosery-bouquet', JSON.stringify({ roses, message }));
+      localStorage.setItem('rosery-bouquet', JSON.stringify({ roses, message, wrapperId }));
     } catch {
       // ignore storage errors
     }
-  }, [roses, message]);
+  }, [roses, message, wrapperId]);
 
   // Restore from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem('rosery-bouquet');
       if (saved) {
-        const { roses: savedRoses, message: savedMessage } = JSON.parse(saved);
+        const { roses: savedRoses, message: savedMessage, wrapperId: savedWrapperId } = JSON.parse(saved);
         if (Array.isArray(savedRoses)) setRoses(savedRoses);
         if (typeof savedMessage === 'string') setMessage(savedMessage);
+        if (typeof savedWrapperId === 'string') setWrapperId(savedWrapperId);
       }
     } catch {
       // ignore parse errors
@@ -173,7 +178,17 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col h-screen bg-[#080808] overflow-hidden">
-      {!isPreviewMode && (
+      {/* Showcase mode — full screen overlay */}
+      {isShowcaseMode && (
+        <ShowcaseView
+          bouquetData={bouquetData}
+          wrapper={selectedWrapper}
+          onClose={() => setIsShowcaseMode(false)}
+          onSend={() => { setIsShowcaseMode(false); setShowShareModal(true); }}
+        />
+      )}
+
+      {!isPreviewMode && !isShowcaseMode && (
         <Header
           onUndo={handleUndo}
           onClearAll={handleClearAll}
@@ -196,69 +211,80 @@ export default function HomePage() {
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
-        {!isPreviewMode && (
-          <RoseLibrary
-            onAddRose={(rose) => addRose(rose)}
-            onDragStart={handleDragStart}
-            isOpen={isLibraryOpen}
-            onClose={() => setIsLibraryOpen(false)}
-          />
-        )}
-
-        <main className="flex-1 relative overflow-hidden">
-          <BouquetCanvas
-            roses={roses}
-            selectedId={selectedId}
-            onSelect={handleSelect}
-            onMove={handleMove}
-            onDrop={handleDrop}
-            isPreviewMode={isPreviewMode}
-          />
-
-          {/* Mobile bottom action bar */}
+      {!isShowcaseMode && (
+        <div className="flex flex-1 overflow-hidden">
           {!isPreviewMode && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 lg:hidden z-20">
-              <button
-                onClick={() => setIsLibraryOpen(true)}
-                className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/60 border border-white/[0.08] backdrop-blur-md"
-              >
-                장미 선택
-              </button>
-              <button
-                onClick={() => setIsPropertiesOpen(true)}
-                className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/60 border border-white/[0.08] backdrop-blur-md"
-              >
-                메시지
-              </button>
-              <button
-                onClick={() => setShowShareModal(true)}
-                className="px-4 py-2 rounded-sm bg-[#F0EDE8] text-[11px] font-semibold text-[#0A0A0A] backdrop-blur-md"
-              >
-                선물하기
-              </button>
-            </div>
+            <RoseLibrary
+              onAddRose={(rose) => addRose(rose)}
+              onDragStart={handleDragStart}
+              isOpen={isLibraryOpen}
+              onClose={() => setIsLibraryOpen(false)}
+              wrapperId={wrapperId}
+              onWrapperChange={setWrapperId}
+            />
           )}
-        </main>
 
-        {!isPreviewMode && (
-          <PropertiesPanel
-            selectedRose={selectedRose}
-            roseType={selectedRoseType}
-            totalRoses={roses.length}
-            usedColors={usedColors}
-            message={message}
-            onMessageChange={setMessage}
-            onScaleChange={handleScaleChange}
-            onRotationChange={handleRotationChange}
-            onBringForward={handleBringForward}
-            onSendBackward={handleSendBackward}
-            onDelete={handleDelete}
-            isOpen={isPropertiesOpen}
-            onClose={() => setIsPropertiesOpen(false)}
-          />
-        )}
-      </div>
+          <main className="flex-1 relative overflow-hidden">
+            <BouquetCanvas
+              roses={roses}
+              selectedId={selectedId}
+              wrapper={selectedWrapper}
+              onSelect={handleSelect}
+              onMove={handleMove}
+              onDrop={handleDrop}
+              isPreviewMode={isPreviewMode}
+            />
+
+            {/* Mobile bottom action bar */}
+            {!isPreviewMode && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 lg:hidden z-20">
+                <button
+                  onClick={() => setIsLibraryOpen(true)}
+                  className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/60 border border-white/[0.08] backdrop-blur-md"
+                >
+                  장미 선택
+                </button>
+                <button
+                  onClick={() => setIsPropertiesOpen(true)}
+                  className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/60 border border-white/[0.08] backdrop-blur-md"
+                >
+                  메시지
+                </button>
+                <button
+                  onClick={() => roses.length > 0 && setIsShowcaseMode(true)}
+                  disabled={roses.length === 0}
+                  className={`px-4 py-2 rounded-sm text-[11px] font-semibold backdrop-blur-md transition-all ${
+                    roses.length > 0
+                      ? 'bg-[#F0EDE8] text-[#0A0A0A]'
+                      : 'bg-white/[0.05] text-white/20 cursor-not-allowed'
+                  }`}
+                >
+                  완성
+                </button>
+              </div>
+            )}
+          </main>
+
+          {!isPreviewMode && (
+            <PropertiesPanel
+              selectedRose={selectedRose}
+              roseType={selectedRoseType}
+              totalRoses={roses.length}
+              usedColors={usedColors}
+              message={message}
+              onMessageChange={setMessage}
+              onScaleChange={handleScaleChange}
+              onRotationChange={handleRotationChange}
+              onBringForward={handleBringForward}
+              onSendBackward={handleSendBackward}
+              onDelete={handleDelete}
+              onComplete={() => setIsShowcaseMode(true)}
+              isOpen={isPropertiesOpen}
+              onClose={() => setIsPropertiesOpen(false)}
+            />
+          )}
+        </div>
+      )}
 
       {showShareModal && (
         <ShareModal
