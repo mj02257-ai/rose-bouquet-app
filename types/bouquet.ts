@@ -10,6 +10,15 @@ export type RoseType = {
   image: string;
 };
 
+export type WrapperStyle = {
+  id: string;
+  name: string;
+  nameKo: string;
+  paperColor: string;
+  paperDark: string;
+  ribbonColor: string;
+};
+
 export type BouquetRose = {
   id: string;
   roseTypeId: string;
@@ -22,6 +31,7 @@ export type BouquetRose = {
 
 export type BouquetData = {
   roses: BouquetRose[];
+  wrapperId: string;
   message?: string;
   recipientName?: string;
   senderName?: string;

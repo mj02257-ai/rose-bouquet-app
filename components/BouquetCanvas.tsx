@@ -1,13 +1,15 @@
 'use client';
 
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { BouquetRose, RoseType } from '@/types/bouquet';
+import { BouquetRose, RoseType, WrapperStyle } from '@/types/bouquet';
 import { ROSES } from '@/lib/roseData';
 import RoseObject from './RoseObject';
+import BouquetWrapper from './BouquetWrapper';
 
 interface BouquetCanvasProps {
   roses: BouquetRose[];
   selectedId: string | null;
+  wrapper: WrapperStyle;
   onSelect: (id: string | null) => void;
   onMove: (id: string, x: number, y: number) => void;
   onDrop: (roseTypeId: string, x: number, y: number) => void;
@@ -17,6 +19,7 @@ interface BouquetCanvasProps {
 export default function BouquetCanvas({
   roses,
   selectedId,
+  wrapper,
   onSelect,
   onMove,
   onDrop,
@@ -157,32 +160,21 @@ export default function BouquetCanvas({
         <div className="absolute inset-0 border-2 border-dashed border-white/20 rounded-lg pointer-events-none z-10" />
       )}
 
-      {/* Bouquet base */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-48 h-32 pointer-events-none">
-        <svg viewBox="0 0 200 130" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="wrap-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#3D2B1F" />
-              <stop offset="50%" stopColor="#5C3D2E" />
-              <stop offset="100%" stopColor="#2D1F14" />
-            </linearGradient>
-          </defs>
-          {/* Wrapping paper */}
-          <path d="M 60 130 L 80 40 L 120 40 L 140 130 Z" fill="url(#wrap-grad)" />
-          <path d="M 60 130 L 80 40 L 100 60 L 80 130 Z" fill="rgba(0,0,0,0.2)" />
-          <path d="M 140 130 L 120 40 L 100 60 L 120 130 Z" fill="rgba(255,255,255,0.05)" />
-          {/* Ribbon */}
-          <ellipse cx="100" cy="42" rx="22" ry="8" fill="#8B6355" opacity="0.8"/>
-          <path d="M 78 42 Q 90 30 100 42 Q 110 54 122 42" stroke="#C4956A" strokeWidth="2" fill="none" opacity="0.6"/>
-        </svg>
+      {/* Bouquet wrapper — always visible at bottom center */}
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-10">
+        <BouquetWrapper wrapper={wrapper} width={196} height={216} />
       </div>
 
-      {/* Empty state */}
+      {/* Empty state — shown above the wrapper */}
       {roses.length === 0 && !isPreviewMode && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-          <div className="text-4xl opacity-20">🌹</div>
-          <p className="text-sm text-gray-600 text-center">Drag roses onto the bouquet</p>
-          <p className="text-xs text-gray-700 text-center">or click a rose to add it</p>
+        <div className="absolute left-0 right-0 flex flex-col items-center gap-1.5 pointer-events-none"
+             style={{ top: '22%' }}>
+          <p className="text-[13px] text-white/22 text-center font-medium px-6">
+            어른이 된 오늘, 한 송이의 마음을 전해보세요.
+          </p>
+          <p className="text-[11px] text-white/12 text-center">
+            왼쪽에서 장미를 선택하거나 드래그해 추가하세요
+          </p>
         </div>
       )}
 
