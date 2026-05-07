@@ -1,5 +1,8 @@
 'use client';
 
+import Image from 'next/image';
+import { useState } from 'react';
+
 interface HeaderProps {
   onUndo: () => void;
   onClearAll: () => void;
@@ -19,6 +22,8 @@ export default function Header({
   canUndo,
   onOpenLibrary,
 }: HeaderProps) {
+  const [logoError, setLogoError] = useState(false);
+
   return (
     <header className="h-14 flex-shrink-0 flex items-center justify-between px-4 lg:px-6 border-b border-white/10 bg-[#0A0A0A] z-20">
       <div className="flex items-center gap-4">
@@ -29,8 +34,20 @@ export default function Header({
         >
           ☰
         </button>
-        <div>
-          <h1 className="text-base font-bold tracking-[0.15em] text-cream uppercase">Rosery</h1>
+        <div className="flex flex-col justify-center">
+          {!logoError ? (
+            <Image
+              src="/assets/brand/andz-logo.png"
+              alt="ANDZ"
+              width={72}
+              height={28}
+              className="object-contain object-left brightness-[0.95]"
+              onError={() => setLogoError(true)}
+              priority
+            />
+          ) : (
+            <h1 className="text-base font-bold tracking-[0.15em] text-cream uppercase">ANDZ</h1>
+          )}
           <p className="text-[10px] text-gray-500 hidden sm:block">Create a rose bouquet and send your feeling.</p>
         </div>
       </div>
