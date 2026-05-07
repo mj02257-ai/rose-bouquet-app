@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg: #0A0A0A;
+    --color-surface: #111111;
+    --color-surface-raised: #161616;
+    --color-border: rgba(255, 255, 255, 0.08);
+    --color-border-hover: rgba(255, 255, 255, 0.18);
+    --color-text-primary: #F0EDE8;
+    --color-text-secondary: #8A8680;
+    --color-text-muted: #4A4744;
+    --color-accent: #C8A882;
+    --color-accent-soft: rgba(200, 168, 130, 0.12);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont,
+      'Segoe UI', sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ── Rose entrance — slides up from below, settles with a slight bounce ── */
+@keyframes roseEnter {
+  0%   { opacity: 0; transform: scale(0.25) translateY(32px); }
+  55%  { opacity: 1; transform: scale(1.07) translateY(-4px); }
+  72%  { transform: scale(0.96) translateY(2px); }
+  85%  { transform: scale(1.02) translateY(-1px); }
+  100% { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+/* ── Gentle sway after placing — simulates a living stem ── */
+@keyframes roseSway {
+  0%   { transform: rotate(0deg); }
+  20%  { transform: rotate(1.4deg); }
+  50%  { transform: rotate(-0.9deg); }
+  75%  { transform: rotate(0.5deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* ── Legacy alias kept for any leftover references ── */
+@keyframes roseAppear {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1);   }
+}
+
+/* ── Fade up ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ── Wrapper wrapping motion ── */
+@keyframes wrapClose {
+  0%   { transform: scaleX(1)    scaleY(1)    translateY(0);    opacity: 1; }
+  30%  { transform: scaleX(0.88) scaleY(1.06) translateY(-4px); }
+  60%  { transform: scaleX(0.72) scaleY(1.10) translateY(-6px); }
+  80%  { transform: scaleX(0.78) scaleY(1.04) translateY(-3px); }
+  100% { transform: scaleX(1)    scaleY(1)    translateY(0);    opacity: 1; }
+}
+
+/* ── Showcase entry ── */
+@keyframes showcaseIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+}
+
+/* ── Range input ── */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 1px;
+  outline: none;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #F0EDE8;
+  border: 2px solid #0A0A0A;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+input[type='range']::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* ── Textarea ── */
+textarea {
+  font-family: inherit;
+}
