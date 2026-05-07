@@ -189,9 +189,9 @@ export default function HomePage() {
         <div className="fixed top-4 right-4 z-50">
           <button
             onClick={() => setIsPreviewMode(false)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F5F0E8] text-black text-xs font-medium hover:bg-white transition-all shadow-xl"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-sm bg-[#F0EDE8] text-[#0A0A0A] text-[11px] font-semibold hover:bg-white transition-colors shadow-xl"
           >
-            ← Edit
+            ← 편집으로
           </button>
         </div>
       )}
@@ -221,21 +221,21 @@ export default function HomePage() {
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 lg:hidden z-20">
               <button
                 onClick={() => setIsLibraryOpen(true)}
-                className="px-4 py-2 rounded-full bg-white/10 text-xs text-gray-300 border border-white/10 backdrop-blur-sm"
+                className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/60 border border-white/[0.08] backdrop-blur-md"
               >
-                🌹 Roses
+                장미 선택
               </button>
               <button
                 onClick={() => setIsPropertiesOpen(true)}
-                className="px-4 py-2 rounded-full bg-white/10 text-xs text-gray-300 border border-white/10 backdrop-blur-sm"
+                className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/60 border border-white/[0.08] backdrop-blur-md"
               >
-                ⚙️ Edit
+                메시지
               </button>
               <button
                 onClick={() => setShowShareModal(true)}
-                className="px-4 py-2 rounded-full bg-[#F5F0E8] text-xs text-black font-medium backdrop-blur-sm"
+                className="px-4 py-2 rounded-sm bg-[#F0EDE8] text-[11px] font-semibold text-[#0A0A0A] backdrop-blur-md"
               >
-                Send ✦
+                선물하기
               </button>
             </div>
           )}

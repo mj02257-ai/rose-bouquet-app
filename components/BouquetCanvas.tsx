@@ -179,10 +179,13 @@ export default function BouquetCanvas({
 
       {/* Empty state */}
       {roses.length === 0 && !isPreviewMode && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-          <div className="text-4xl opacity-20">🌹</div>
-          <p className="text-sm text-gray-600 text-center">Drag roses onto the bouquet</p>
-          <p className="text-xs text-gray-700 text-center">or click a rose to add it</p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
+          <p className="text-[13px] text-white/20 text-center font-medium">
+            어른이 된 오늘, 한 송이의 마음을 전해보세요.
+          </p>
+          <p className="text-[11px] text-white/12 text-center">
+            왼쪽에서 장미를 선택하거나 드래그해 꽃다발을 완성하세요
+          </p>
         </div>
       )}
 
