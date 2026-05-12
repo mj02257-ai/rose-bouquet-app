@@ -5,7 +5,6 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { useGLTF, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { BouquetData, WrapperState } from '@/types/bouquet';
-import { ROSES } from '@/lib/roseData';
 
 // ── GLB routing ───────────────────────────────────────────────────────────────
 const ROSE_GLB_PATH: Record<string, string> = {
@@ -20,7 +19,6 @@ const ROSE_GLB_PATH: Record<string, string> = {
   black:    '/assets/3d/roses/rose-red.glb',
 };
 
-// Color overrides for rose types that reuse another type's GLB
 const ROSE_COLOR_OVERRIDE: Record<string, string | null> = {
   red: null, pink: null, white: null, peach: null,
   yellow:   '#D4AC0D',
@@ -30,17 +28,11 @@ const ROSE_COLOR_OVERRIDE: Record<string, string | null> = {
   black:    '#111111',
 };
 
-// Preload is called client-side only (in BouquetScene3D's useEffect below)
+// ── Black wrapper material ────────────────────────────────────────────────────
+const makeBlackMat = () =>
+  new THREE.MeshStandardMaterial({ color: new THREE.Color('#0D0D0D'), roughness: 0.88, metalness: 0.06 });
 
-// ── Black wrapper material (shared) ──────────────────────────────────────────
-const makeBlackWrapperMat = () =>
-  new THREE.MeshStandardMaterial({
-    color: new THREE.Color('#0D0D0D'),
-    roughness: 0.88,
-    metalness: 0.06,
-  });
-
-// ── Helper: clone scene and optionally override mesh colors ───────────────────
+// ── Clone scene + optional color override ────────────────────────────────────
 function cloneScene(scene: THREE.Group, colorOverride: string | null): THREE.Group {
   const clone = scene.clone(true);
   if (colorOverride) {
@@ -48,8 +40,8 @@ function cloneScene(scene: THREE.Group, colorOverride: string | null): THREE.Gro
     clone.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
-        const mat = (mesh.material as THREE.MeshStandardMaterial).clone();
-        mat.color = col;
+        const mat  = (mesh.material as THREE.MeshStandardMaterial).clone();
+        mat.color  = col;
         mesh.material = mat;
       }
     });
@@ -57,51 +49,35 @@ function cloneScene(scene: THREE.Group, colorOverride: string | null): THREE.Gro
   return clone;
 }
 
-// ── Individual rose instance ──────────────────────────────────────────────────
-interface RoseInstanceProps {
-  roseTypeId: string;
-  position: [number, number, number];
-  scale: number;
-  rotationY: number;
-}
-
-function RoseInstance({ roseTypeId, position, scale, rotationY }: RoseInstanceProps) {
-  const glbPath = ROSE_GLB_PATH[roseTypeId] ?? '/assets/3d/roses/rose-red.glb';
+// ── Single rose GLB (no transforms — parent group owns them) ─────────────────
+function RoseInstance({ roseTypeId }: { roseTypeId: string }) {
+  const glbPath      = ROSE_GLB_PATH[roseTypeId] ?? '/assets/3d/roses/rose-red.glb';
   const colorOverride = ROSE_COLOR_OVERRIDE[roseTypeId] ?? null;
-  const { scene } = useGLTF(glbPath);
+  const { scene }    = useGLTF(glbPath);
 
   const cloned = useMemo(
     () => cloneScene(scene as unknown as THREE.Group, colorOverride),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scene, colorOverride]
+    [scene]
   );
 
-  return (
-    <primitive
-      object={cloned}
-      position={position}
-      scale={scale}
-      rotation={[0, (rotationY * Math.PI) / 180, 0]}
-    />
-  );
+  return <primitive object={cloned} />;
 }
 
-// ── Wrapper model — swaps GLB based on state, always black material ───────────
+// ── Wrapper GLB — always black, swaps mesh on ribbonTied ─────────────────────
 function WrapperModel({ wrapperState }: { wrapperState: WrapperState }) {
   const wrappedGlb    = useGLTF('/assets/3d/wrappers/wrapper_wrapped_base.glb');
   const ribbonTiedGlb = useGLTF('/assets/3d/wrappers/wrapper_ribbon_tied_base.glb');
 
   const activeScene = wrapperState === 'ribbonTied'
     ? (ribbonTiedGlb.scene as unknown as THREE.Group)
-    : (wrappedGlb.scene as unknown as THREE.Group);
+    : (wrappedGlb.scene   as unknown as THREE.Group);
 
   const cloned = useMemo(() => {
     const clone = activeScene.clone(true);
-    const mat = makeBlackWrapperMat();
+    const mat   = makeBlackMat();
     clone.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        (child as THREE.Mesh).material = mat;
-      }
+      if ((child as THREE.Mesh).isMesh) (child as THREE.Mesh).material = mat;
     });
     return clone;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,7 +86,7 @@ function WrapperModel({ wrapperState }: { wrapperState: WrapperState }) {
   return <primitive object={cloned} position={[0, 0, 0]} />;
 }
 
-// ── Ribbon band — grows from center outward during 'tying' state ─────────────
+// ── Satin ribbon band — grows 0→1 during 'tying', stays visible after ────────
 interface RibbonBandProps {
   color: string;
   wrapperState: WrapperState;
@@ -118,37 +94,27 @@ interface RibbonBandProps {
 }
 
 function RibbonBand({ color, wrapperState, onTyingComplete }: RibbonBandProps) {
-  const meshRef    = useRef<THREE.Mesh>(null!);
+  const meshRef     = useRef<THREE.Mesh>(null!);
   const progressRef = useRef(0);
   const calledRef   = useRef(false);
 
   useEffect(() => {
-    if (wrapperState === 'tying') {
-      progressRef.current = 0;
-      calledRef.current   = false;
-    }
+    if (wrapperState === 'tying') { progressRef.current = 0; calledRef.current = false; }
   }, [wrapperState]);
 
   useFrame((_, delta) => {
     if (wrapperState !== 'tying') return;
     if (progressRef.current >= 1) {
-      if (!calledRef.current) {
-        calledRef.current = true;
-        onTyingComplete?.();
-      }
+      if (!calledRef.current) { calledRef.current = true; onTyingComplete?.(); }
       return;
     }
     progressRef.current = Math.min(1, progressRef.current + delta * 1.1);
-    // Ease in-out cubic
     const t = progressRef.current;
     const s = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-    if (meshRef.current) {
-      meshRef.current.scale.set(s, 1, s);
-    }
+    if (meshRef.current) meshRef.current.scale.set(s, 1, s);
   });
 
-  const visible = wrapperState === 'tying' || wrapperState === 'ribbonTied';
-  if (!visible) return null;
+  if (wrapperState !== 'tying' && wrapperState !== 'ribbonTied') return null;
 
   return (
     <mesh
@@ -157,28 +123,25 @@ function RibbonBand({ color, wrapperState, onTyingComplete }: RibbonBandProps) {
       scale={wrapperState === 'ribbonTied' ? [1, 1, 1] : [0.001, 1, 0.001]}
     >
       <torusGeometry args={[0.48, 0.038, 10, 72]} />
-      <meshStandardMaterial
-        color={color}
-        roughness={0.22}
-        metalness={0.18}
-      />
+      <meshStandardMaterial color={color} roughness={0.22} metalness={0.18} />
     </mesh>
   );
 }
 
-// ── Main group: all scene objects in one rotatable group ─────────────────────
+// ── Main scene group ──────────────────────────────────────────────────────────
 interface BouquetGroupProps {
   bouquetData: BouquetData;
   wrapperState: WrapperState;
   dominantColor: string;
+  selectedId?: string | null;
+  onSelect?: (id: string | null) => void;
+  editMode?: boolean;
   onTyingComplete?: () => void;
 }
 
 function BouquetGroup({
-  bouquetData,
-  wrapperState,
-  dominantColor,
-  onTyingComplete,
+  bouquetData, wrapperState, dominantColor,
+  selectedId, onSelect, editMode, onTyingComplete,
 }: BouquetGroupProps) {
   const zIndices = bouquetData.roses.map((r) => r.zIndex);
   const zMin  = zIndices.length ? Math.min(...zIndices) : 0;
@@ -190,62 +153,67 @@ function BouquetGroup({
       <WrapperModel wrapperState={wrapperState} />
 
       {bouquetData.roses.map((rose) => {
-        // Map 2D canvas percentages to 3D world space
-        const worldX = (rose.x / 100 - 0.5) * 2.2;
-        const depthNorm = (rose.zIndex - zMin) / zRange;
-        // Canvas y grows downward; roses at lower y% are higher in bouquet
-        const worldY = (1 - (rose.y * 0.66) / 100) * 2.4 + 0.4;
-        const worldZ = (depthNorm - 0.5) * 0.7;
+        const worldX      = (rose.x / 100 - 0.5) * 2.2;
+        const depthNorm   = (rose.zIndex - zMin) / zRange;
+        const worldY      = (1 - (rose.y * 0.66) / 100) * 2.4 + 0.4;
+        const worldZ      = (depthNorm - 0.5) * 0.7;
+        const isSelected  = editMode && selectedId === rose.id;
 
         return (
-          <RoseInstance
+          <group
             key={rose.id}
-            roseTypeId={rose.roseTypeId}
             position={[worldX, worldY, worldZ]}
             scale={rose.scale * 0.26}
-            rotationY={rose.rotation}
-          />
+            rotation={[0, (rose.rotation * Math.PI) / 180, 0]}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            onClick={editMode ? (e: any) => { e.stopPropagation(); onSelect?.(rose.id); } : undefined}
+          >
+            <RoseInstance roseTypeId={rose.roseTypeId} />
+
+            {/* Selection ring in edit mode */}
+            {isSelected && (
+              <mesh rotation={[Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[1.8, 2.25, 48]} />
+                <meshBasicMaterial color="#FFFFFF" opacity={0.35} transparent side={THREE.DoubleSide} />
+              </mesh>
+            )}
+          </group>
         );
       })}
 
-      <RibbonBand
-        color={dominantColor}
-        wrapperState={wrapperState}
-        onTyingComplete={onTyingComplete}
-      />
+      <RibbonBand color={dominantColor} wrapperState={wrapperState} onTyingComplete={onTyingComplete} />
     </group>
   );
 }
 
-// ── Loading fallback (inside canvas) ─────────────────────────────────────────
+// ── Canvas loading spinner ────────────────────────────────────────────────────
 function LoadingMesh() {
-  const meshRef = useRef<THREE.Mesh>(null!);
-  useFrame((_, delta) => {
-    if (meshRef.current) meshRef.current.rotation.y += delta * 1.2;
-  });
+  const ref = useRef<THREE.Mesh>(null!);
+  useFrame((_, dt) => { if (ref.current) ref.current.rotation.y += dt * 1.2; });
   return (
-    <mesh ref={meshRef} position={[0, 0.5, 0]}>
+    <mesh ref={ref} position={[0, 0.5, 0]}>
       <octahedronGeometry args={[0.18, 0]} />
       <meshStandardMaterial color="#444" roughness={0.5} />
     </mesh>
   );
 }
 
-// ── Public component ──────────────────────────────────────────────────────────
+// ── Public API ────────────────────────────────────────────────────────────────
 export interface BouquetScene3DProps {
   bouquetData: BouquetData;
   wrapperState: WrapperState;
   dominantColor: string;
   autoRotate: boolean;
+  /** editMode: orbiting always on, roses clickable, no auto-rotate */
+  editMode?: boolean;
+  selectedId?: string | null;
+  onSelect?: (id: string | null) => void;
   onTyingComplete?: () => void;
 }
 
 export default function BouquetScene3D({
-  bouquetData,
-  wrapperState,
-  dominantColor,
-  autoRotate,
-  onTyingComplete,
+  bouquetData, wrapperState, dominantColor, autoRotate,
+  editMode, selectedId, onSelect, onTyingComplete,
 }: BouquetScene3DProps) {
   useEffect(() => {
     useGLTF.preload('/assets/3d/roses/rose-red.glb');
@@ -256,19 +224,23 @@ export default function BouquetScene3D({
     useGLTF.preload('/assets/3d/wrappers/wrapper_ribbon_tied_base.glb');
   }, []);
 
+  // Controls are always on in editMode (except during tying animation)
+  const controlsEnabled = editMode
+    ? wrapperState !== 'tying'
+    : wrapperState === 'ribbonTied';
+
+  const cameraPos: [number, number, number] = editMode ? [0, 1.4, 3.8] : [0, 1.6, 4.2];
+
   return (
     <Canvas
-      camera={{ position: [0, 1.6, 4.2], fov: 34 }}
+      camera={{ position: cameraPos, fov: 34 }}
       gl={{ antialias: true, alpha: true }}
       style={{ width: '100%', height: '100%' }}
+      onPointerMissed={() => editMode && onSelect?.(null)}
     >
-      {/* Cool ambient fill */}
       <ambientLight intensity={0.42} color="#C8D4E0" />
-      {/* Key light: upper right, warm-white */}
       <directionalLight intensity={1.8} position={[3, 5, 2]} color="#FFFFFF" />
-      {/* Fill light: left side, cool */}
       <pointLight intensity={0.55} position={[-3, 2, 1]} color="#B0C8E4" />
-      {/* Rim light: back low */}
       <pointLight intensity={0.28} position={[0, -1, -3]} color="#E8D0C0" />
 
       <Suspense fallback={<LoadingMesh />}>
@@ -276,6 +248,9 @@ export default function BouquetScene3D({
           bouquetData={bouquetData}
           wrapperState={wrapperState}
           dominantColor={dominantColor}
+          selectedId={selectedId}
+          onSelect={onSelect}
+          editMode={editMode}
           onTyingComplete={onTyingComplete}
         />
       </Suspense>
@@ -283,11 +258,11 @@ export default function BouquetScene3D({
       <OrbitControls
         enablePan={false}
         enableZoom={false}
-        autoRotate={autoRotate && wrapperState === 'ribbonTied'}
+        autoRotate={!editMode && autoRotate && wrapperState === 'ribbonTied'}
         autoRotateSpeed={1.4}
         minPolarAngle={Math.PI / 5}
-        maxPolarAngle={Math.PI * 0.68}
-        enabled={wrapperState === 'ribbonTied'}
+        maxPolarAngle={Math.PI * 0.72}
+        enabled={controlsEnabled}
       />
     </Canvas>
   );

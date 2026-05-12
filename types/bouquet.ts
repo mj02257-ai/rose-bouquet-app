@@ -42,4 +42,4 @@ export type HistoryEntry = {
   message: string;
 };
 
-export type WrapperState = 'wrapped' | 'tying' | 'ribbonTied';
+export type WrapperState = 'idle' | 'wrapped' | 'tying' | 'ribbonTied';
