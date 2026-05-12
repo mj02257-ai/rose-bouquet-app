@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { BouquetRose, BouquetData, RoseType, HistoryEntry } from '@/types/bouquet';
+import { BouquetRose, BouquetData, RoseType, HistoryEntry, WrapperState } from '@/types/bouquet';
 import { ROSES, WRAPPERS, DEFAULT_WRAPPER_ID } from '@/lib/roseData';
 import Header from '@/components/Header';
 import RoseLibrary from '@/components/RoseLibrary';
@@ -17,6 +17,22 @@ const generateId = () => `rose-${Date.now()}-${++idCounter}`;
 
 const MAX_HISTORY = 30;
 
+// Dominant rose color: most frequent type, tie-break = last added
+function getDominantColor(roses: BouquetRose[]): string {
+  if (roses.length === 0) return '#C0392B';
+  const counts: Record<string, number> = {};
+  const lastIdx: Record<string, number> = {};
+  roses.forEach((r, i) => {
+    counts[r.roseTypeId] = (counts[r.roseTypeId] ?? 0) + 1;
+    lastIdx[r.roseTypeId] = i;
+  });
+  const dominant = Object.keys(counts).sort((a, b) => {
+    if (counts[b] !== counts[a]) return counts[b] - counts[a];
+    return lastIdx[b] - lastIdx[a];
+  })[0];
+  return ROSES.find((r) => r.id === dominant)?.color ?? '#C0392B';
+}
+
 export default function HomePage() {
   const [roses, setRoses] = useState<BouquetRose[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -24,13 +40,13 @@ export default function HomePage() {
   const [wrapperId, setWrapperId] = useState(DEFAULT_WRAPPER_ID);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isShowcaseMode, setIsShowcaseMode] = useState(false);
-  const [isWrapping,     setIsWrapping]     = useState(false);
+  const [isWrapping, setIsWrapping]         = useState(false);
+  const [wrapperState, setWrapperState]     = useState<WrapperState>('wrapped');
   const [showShareModal, setShowShareModal] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
 
-  // Save state to history before mutations
   const saveHistory = useCallback(
     (currentRoses: BouquetRose[], currentMessage: string) => {
       setHistory((prev) => [
@@ -146,15 +162,25 @@ export default function HomePage() {
     setSelectedId(null);
   }, [message, saveHistory]);
 
-  // Trigger the wrapping animation, then transition to showcase after 1.4 s
+  // CSS wrapping overlay → open showcase in 'tying' state
   const handleComplete = useCallback(() => {
     if (roses.length === 0) return;
     setIsWrapping(true);
     setTimeout(() => {
       setIsWrapping(false);
+      setWrapperState('tying');
       setIsShowcaseMode(true);
     }, 1400);
   }, [roses.length]);
+
+  const handleTyingComplete = useCallback(() => {
+    setWrapperState('ribbonTied');
+  }, []);
+
+  const handleCloseShowcase = useCallback(() => {
+    setIsShowcaseMode(false);
+    setWrapperState('wrapped');
+  }, []);
 
   const selectedRose = roses.find((r) => r.id === selectedId) || null;
   const selectedRoseType = selectedRose ? ROSES.find((r) => r.id === selectedRose.roseTypeId) || null : null;
@@ -162,6 +188,7 @@ export default function HomePage() {
     .map((id) => ROSES.find((r) => r.id === id)?.color || '')
     .filter(Boolean);
   const selectedWrapper = WRAPPERS.find((w) => w.id === wrapperId) ?? WRAPPERS[0];
+  const dominantColor = getDominantColor(roses);
 
   const bouquetData: BouquetData = { roses, wrapperId, message };
 
@@ -190,46 +217,52 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-[#F7F7F5] overflow-hidden">
-      {/* ── Wrapping animation overlay ─────────────────────────── */}
+    <div className="flex flex-col h-screen bg-[#080808] overflow-hidden">
+      {/* ── CSS wrapping animation overlay ────────────────────────── */}
       {isWrapping && (
-        <div className="fixed inset-0 z-50 bg-[#0A0A09] flex flex-col items-center justify-center"
-             style={{ animation: 'fadeUp 0.25s ease-out' }}>
+        <div
+          className="fixed inset-0 z-50 bg-[#060606] flex flex-col items-center justify-center"
+          style={{ animation: 'fadeUp 0.25s ease-out' }}
+        >
           <div className="relative" style={{ width: 'clamp(220px,38vw,300px)', height: 'clamp(340px,58vw,460px)' }}>
-            {/* Roses */}
             {[...roses].sort((a, b) => a.zIndex - b.zIndex).map((rose) => {
               const rt = ROSES.find((r) => r.id === rose.roseTypeId);
               if (!rt) return null;
               return (
-                <div key={rose.id} className="absolute pointer-events-none"
+                <div
+                  key={rose.id}
+                  className="absolute pointer-events-none"
                   style={{
                     left: `${rose.x}%`,
                     top:  `${rose.y * 0.66}%`,
                     transform: `translate(-50%,-50%) scale(${rose.scale * 1.14}) rotate(${rose.rotation}deg)`,
                     zIndex: rose.zIndex,
-                    filter: 'drop-shadow(0 4px 14px rgba(0,0,0,0.55))',
+                    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.5))',
                     animation: 'fadeUp 0.35s ease-out both',
-                  }}>
+                  }}
+                >
                   <RoseObject roseType={rt} size={70} />
                 </div>
               );
             })}
-            {/* Wrapper — plays wrapClose animation */}
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none">
               <BouquetWrapper wrapper={selectedWrapper} width={222} height={242} isWrapping />
             </div>
           </div>
-          <p className="mt-8 text-[11px] text-white/28 tracking-widest font-light">꽃다발을 포장하는 중…</p>
+          <p className="mt-8 text-[11px] text-white/28 tracking-widest">꽃다발을 포장하는 중…</p>
         </div>
       )}
 
-      {/* ── Showcase mode ───────────────────────────────────────── */}
+      {/* ── 3D Showcase mode ───────────────────────────────────────── */}
       {isShowcaseMode && (
         <ShowcaseView
           bouquetData={bouquetData}
           wrapper={selectedWrapper}
-          onClose={() => setIsShowcaseMode(false)}
-          onSend={() => { setIsShowcaseMode(false); setShowShareModal(true); }}
+          wrapperState={wrapperState}
+          dominantColor={dominantColor}
+          onTyingComplete={handleTyingComplete}
+          onClose={handleCloseShowcase}
+          onSend={() => { handleCloseShowcase(); setShowShareModal(true); }}
         />
       )}
 
@@ -249,7 +282,7 @@ export default function HomePage() {
         <div className="fixed top-4 right-4 z-50">
           <button
             onClick={() => setIsPreviewMode(false)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-sm bg-[#111110] text-white text-[11px] font-semibold hover:bg-black transition-colors shadow-xl"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-sm bg-[#F0EDE8] text-[#0A0A0A] text-[11px] font-semibold hover:bg-white transition-colors shadow-xl"
           >
             ← 편집으로
           </button>
@@ -280,18 +313,17 @@ export default function HomePage() {
               isPreviewMode={isPreviewMode}
             />
 
-            {/* Mobile bottom action bar */}
             {!isPreviewMode && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 lg:hidden z-20">
                 <button
                   onClick={() => setIsLibraryOpen(true)}
-                  className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/55 border border-white/[0.10] backdrop-blur-md"
+                  className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/60 border border-white/[0.08] backdrop-blur-md"
                 >
                   장미 선택
                 </button>
                 <button
                   onClick={() => setIsPropertiesOpen(true)}
-                  className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/55 border border-white/[0.10] backdrop-blur-md"
+                  className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/60 border border-white/[0.08] backdrop-blur-md"
                 >
                   메시지
                 </button>
@@ -300,8 +332,8 @@ export default function HomePage() {
                   disabled={roses.length === 0}
                   className={`px-4 py-2 rounded-sm text-[11px] font-semibold backdrop-blur-md transition-all ${
                     roses.length > 0
-                      ? 'bg-white text-[#111110]'
-                      : 'bg-white/[0.08] text-white/25 cursor-not-allowed'
+                      ? 'bg-[#F0EDE8] text-[#0A0A0A]'
+                      : 'bg-white/[0.05] text-white/20 cursor-not-allowed'
                   }`}
                 >
                   완성
