@@ -1,7 +1,6 @@
 'use client';
 
 import { RoseType } from '@/types/bouquet';
-import RoseObject from './RoseObject';
 
 interface RoseCardProps {
   rose: RoseType;
@@ -17,12 +16,12 @@ export default function RoseCard({ rose, onAdd, onDragStart }: RoseCardProps) {
       draggable
       onDragStart={(e) => onDragStart(e, rose)}
     >
-      {/* Rose thumbnail */}
-      <div
-        className="flex-shrink-0 w-11 h-11 rounded-sm flex items-center justify-center transition-transform duration-150 group-hover:scale-105"
-        style={{ backgroundColor: `${rose.color}18` }}
-      >
-        <RoseObject roseType={rose} size={38} />
+      {/* Color dot */}
+      <div className="flex-shrink-0 flex items-center justify-center w-11 h-11">
+        <div
+          className="w-3 h-3 rounded-full"
+          style={{ backgroundColor: rose.color }}
+        />
       </div>
 
       {/* Info */}

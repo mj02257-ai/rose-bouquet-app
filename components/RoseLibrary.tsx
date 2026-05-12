@@ -16,10 +16,10 @@ interface RoseLibraryProps {
 
 export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose }: RoseLibraryProps) {
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<CategoryFilter>('All');
+  const [category, setCategory] = useState<CategoryFilter>('전체');
 
   const filtered = ROSES.filter((r) => {
-    const matchCat = category === 'All' || r.category === category;
+    const matchCat = category === '전체' || r.category === category;
     const matchSearch =
       search === '' ||
       r.name.toLowerCase().includes(search.toLowerCase()) ||

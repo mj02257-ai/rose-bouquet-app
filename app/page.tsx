@@ -15,20 +15,6 @@ const generateId = () => `rose-${Date.now()}-${++idCounter}`;
 
 const MAX_HISTORY = 30;
 
-// Most-frequent rose type; ties broken by last-added
-function getDominantColor(roses: BouquetRose[]): string {
-  if (roses.length === 0) return '#C0392B';
-  const counts: Record<string, number> = {};
-  const lastIdx: Record<string, number> = {};
-  roses.forEach((r, i) => {
-    counts[r.roseTypeId]  = (counts[r.roseTypeId] ?? 0) + 1;
-    lastIdx[r.roseTypeId] = i;
-  });
-  const dominant = Object.keys(counts).sort((a, b) =>
-    counts[b] !== counts[a] ? counts[b] - counts[a] : lastIdx[b] - lastIdx[a]
-  )[0];
-  return ROSES.find((r) => r.id === dominant)?.color ?? '#C0392B';
-}
 
 export default function HomePage() {
   const [roses, setRoses]             = useState<BouquetRose[]>([]);
@@ -170,11 +156,7 @@ export default function HomePage() {
 
   const selectedRose     = roses.find((r) => r.id === selectedId) || null;
   const selectedRoseType = selectedRose ? ROSES.find((r) => r.id === selectedRose.roseTypeId) || null : null;
-  const usedColors       = Array.from(new Set(roses.map((r) => r.roseTypeId)))
-    .map((id) => ROSES.find((r) => r.id === id)?.color || '')
-    .filter(Boolean);
-  const selectedWrapper = WRAPPERS.find((w) => w.id === wrapperId) ?? WRAPPERS[0];
-  const dominantColor   = getDominantColor(roses);
+  const selectedWrapper  = WRAPPERS.find((w) => w.id === wrapperId) ?? WRAPPERS[0];
   const bouquetData: BouquetData = { roses, wrapperId, message };
 
   useEffect(() => {
@@ -202,7 +184,6 @@ export default function HomePage() {
           bouquetData={bouquetData}
           wrapper={selectedWrapper}
           wrapperState="ribbonTied"
-          dominantColor={dominantColor}
           onTyingComplete={() => {/* already tied when showcase opens */}}
           onClose={handleCloseShowcase}
           onSend={() => { handleCloseShowcase(); setShowShareModal(true); }}
@@ -254,7 +235,6 @@ export default function HomePage() {
               selectedId={selectedId}
               wrapper={selectedWrapper}
               wrapperState={editWrapperState}
-              dominantColor={dominantColor}
               message={message}
               onSelect={handleSelect}
               onMove={handleMove}
@@ -298,7 +278,6 @@ export default function HomePage() {
               selectedRose={selectedRose}
               roseType={selectedRoseType}
               totalRoses={roses.length}
-              usedColors={usedColors}
               message={message}
               onMessageChange={setMessage}
               onScaleChange={handleScaleChange}

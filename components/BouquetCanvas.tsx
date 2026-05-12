@@ -12,7 +12,6 @@ interface BouquetCanvasProps {
   selectedId: string | null;
   wrapper: WrapperStyle;
   wrapperState: WrapperState;
-  dominantColor: string;
   message: string;
   onSelect: (id: string | null) => void;
   onMove: (id: string, x: number, y: number) => void;
@@ -26,7 +25,6 @@ export default function BouquetCanvas({
   selectedId,
   wrapper,
   wrapperState,
-  dominantColor,
   message,
   onSelect,
   onDrop,
@@ -72,7 +70,6 @@ export default function BouquetCanvas({
       <BouquetScene3D
         bouquetData={bouquetData}
         wrapperState={wrapperState}
-        dominantColor={dominantColor}
         autoRotate={false}
         editMode={!isPreviewMode}
         selectedId={selectedId}

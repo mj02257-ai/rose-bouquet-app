@@ -10,7 +10,6 @@ interface ShowcaseViewProps {
   bouquetData: BouquetData;
   wrapper: WrapperStyle;
   wrapperState: WrapperState;
-  dominantColor: string;
   onTyingComplete: () => void;
   onClose: () => void;
   onSend: () => void;
@@ -20,7 +19,6 @@ export default function ShowcaseView({
   bouquetData,
   wrapper,
   wrapperState,
-  dominantColor,
   onTyingComplete,
   onClose,
   onSend,
@@ -88,7 +86,6 @@ export default function ShowcaseView({
         <BouquetScene3D
           bouquetData={bouquetData}
           wrapperState={wrapperState}
-          dominantColor={dominantColor}
           autoRotate={autoRotate}
           onTyingComplete={onTyingComplete}
         />

@@ -4,7 +4,7 @@ export type RoseType = {
   color: string;
   gradientFrom: string;
   gradientTo: string;
-  category: 'Love' | 'Friendship' | 'Gratitude' | 'Apology' | 'Memory';
+  category: '사랑' | '진심' | '시작' | '감사';
   meaningEn: string;
   meaningKo: string;
   image: string;

@@ -8,55 +8,31 @@ import { BouquetData, WrapperState } from '@/types/bouquet';
 
 // ── GLB routing ───────────────────────────────────────────────────────────────
 const ROSE_GLB_PATH: Record<string, string> = {
-  red:      '/assets/3d/roses/rose-red.glb',
-  pink:     '/assets/3d/roses/rose-pink.glb',
-  white:    '/assets/3d/roses/rose-white.glb',
-  peach:    '/assets/3d/roses/rose-peach.glb',
-  yellow:   '/assets/3d/roses/rose-peach.glb',
-  orange:   '/assets/3d/roses/rose-red.glb',
-  lavender: '/assets/3d/roses/rose-pink.glb',
-  blue:     '/assets/3d/roses/rose-white.glb',
-  black:    '/assets/3d/roses/rose-red.glb',
+  red:   '/assets/3d/roses/rose-red.glb',
+  pink:  '/assets/3d/roses/rose-pink.glb',
+  white: '/assets/3d/roses/rose-white.glb',
+  peach: '/assets/3d/roses/rose-peach.glb',
 };
 
-const ROSE_COLOR_OVERRIDE: Record<string, string | null> = {
-  red: null, pink: null, white: null, peach: null,
-  yellow:   '#D4AC0D',
-  orange:   '#CA6F1E',
-  lavender: '#7D3C98',
-  blue:     '#1A5276',
-  black:    '#111111',
-};
+// Fixed ANDZ satin silver ribbon color
+const RIBBON_COLOR = '#C8C8CC';
 
 // ── Black wrapper material ────────────────────────────────────────────────────
 const makeBlackMat = () =>
-  new THREE.MeshStandardMaterial({ color: new THREE.Color('#0D0D0D'), roughness: 0.88, metalness: 0.06 });
+  new THREE.MeshStandardMaterial({ color: new THREE.Color('#080808'), roughness: 0.85, metalness: 0 });
 
-// ── Clone scene + optional color override ────────────────────────────────────
-function cloneScene(scene: THREE.Group, colorOverride: string | null): THREE.Group {
-  const clone = scene.clone(true);
-  if (colorOverride) {
-    const col = new THREE.Color(colorOverride);
-    clone.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-        const mat  = (mesh.material as THREE.MeshStandardMaterial).clone();
-        mat.color  = col;
-        mesh.material = mat;
-      }
-    });
-  }
-  return clone;
+// ── Clone scene (no color override needed — all 4 roses use native colors) ───
+function cloneScene(scene: THREE.Group): THREE.Group {
+  return scene.clone(true);
 }
 
-// ── Single rose GLB (no transforms — parent group owns them) ─────────────────
+// ── Single rose GLB ───────────────────────────────────────────────────────────
 function RoseInstance({ roseTypeId }: { roseTypeId: string }) {
-  const glbPath      = ROSE_GLB_PATH[roseTypeId] ?? '/assets/3d/roses/rose-red.glb';
-  const colorOverride = ROSE_COLOR_OVERRIDE[roseTypeId] ?? null;
-  const { scene }    = useGLTF(glbPath);
+  const glbPath = ROSE_GLB_PATH[roseTypeId] ?? '/assets/3d/roses/rose-red.glb';
+  const { scene } = useGLTF(glbPath);
 
   const cloned = useMemo(
-    () => cloneScene(scene as unknown as THREE.Group, colorOverride),
+    () => cloneScene(scene as unknown as THREE.Group),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [scene]
   );
@@ -88,12 +64,11 @@ function WrapperModel({ wrapperState }: { wrapperState: WrapperState }) {
 
 // ── Satin ribbon band — grows 0→1 during 'tying', stays visible after ────────
 interface RibbonBandProps {
-  color: string;
   wrapperState: WrapperState;
   onTyingComplete?: () => void;
 }
 
-function RibbonBand({ color, wrapperState, onTyingComplete }: RibbonBandProps) {
+function RibbonBand({ wrapperState, onTyingComplete }: RibbonBandProps) {
   const meshRef     = useRef<THREE.Mesh>(null!);
   const progressRef = useRef(0);
   const calledRef   = useRef(false);
@@ -123,7 +98,7 @@ function RibbonBand({ color, wrapperState, onTyingComplete }: RibbonBandProps) {
       scale={wrapperState === 'ribbonTied' ? [1, 1, 1] : [0.001, 1, 0.001]}
     >
       <torusGeometry args={[0.48, 0.038, 10, 72]} />
-      <meshStandardMaterial color={color} roughness={0.22} metalness={0.18} />
+      <meshStandardMaterial color={RIBBON_COLOR} roughness={0.22} metalness={0.12} />
     </mesh>
   );
 }
@@ -132,7 +107,6 @@ function RibbonBand({ color, wrapperState, onTyingComplete }: RibbonBandProps) {
 interface BouquetGroupProps {
   bouquetData: BouquetData;
   wrapperState: WrapperState;
-  dominantColor: string;
   selectedId?: string | null;
   onSelect?: (id: string | null) => void;
   editMode?: boolean;
@@ -140,7 +114,7 @@ interface BouquetGroupProps {
 }
 
 function BouquetGroup({
-  bouquetData, wrapperState, dominantColor,
+  bouquetData, wrapperState,
   selectedId, onSelect, editMode, onTyingComplete,
 }: BouquetGroupProps) {
   const zIndices = bouquetData.roses.map((r) => r.zIndex);
@@ -153,18 +127,26 @@ function BouquetGroup({
       <WrapperModel wrapperState={wrapperState} />
 
       {bouquetData.roses.map((rose) => {
-        const worldX      = (rose.x / 100 - 0.5) * 2.2;
-        const depthNorm   = (rose.zIndex - zMin) / zRange;
-        const worldY      = (1 - (rose.y * 0.66) / 100) * 2.4 + 0.4;
-        const worldZ      = (depthNorm - 0.5) * 0.7;
-        const isSelected  = editMode && selectedId === rose.id;
+        const cx        = rose.x / 100 - 0.5;  // -0.5 … +0.5
+        const worldX    = cx * 1.3;             // spread ±0.65
+        const depthNorm = (rose.zIndex - zMin) / zRange;
+        // Y: center roses cluster around wrapper opening, fan-arced upward
+        const worldY    = 1.2 + Math.max(0, 0.5 - Math.abs(cx) * 0.8) * 0.4;
+        const worldZ    = (depthNorm - 0.5) * 0.4;
+        // Tilt: fan outward on Z axis, slight backward lean on X axis
+        const fanTiltZ  = -cx * 20;   // degrees
+        const isSelected = editMode && selectedId === rose.id;
 
         return (
           <group
             key={rose.id}
             position={[worldX, worldY, worldZ]}
-            scale={rose.scale * 0.26}
-            rotation={[0, (rose.rotation * Math.PI) / 180, 0]}
+            scale={rose.scale * 0.10}
+            rotation={[
+              (-8 * Math.PI) / 180,
+              (rose.rotation * Math.PI) / 180,
+              (fanTiltZ * Math.PI) / 180,
+            ]}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             onClick={editMode ? (e: any) => { e.stopPropagation(); onSelect?.(rose.id); } : undefined}
           >
@@ -181,7 +163,7 @@ function BouquetGroup({
         );
       })}
 
-      <RibbonBand color={dominantColor} wrapperState={wrapperState} onTyingComplete={onTyingComplete} />
+      <RibbonBand wrapperState={wrapperState} onTyingComplete={onTyingComplete} />
     </group>
   );
 }
@@ -202,9 +184,7 @@ function LoadingMesh() {
 export interface BouquetScene3DProps {
   bouquetData: BouquetData;
   wrapperState: WrapperState;
-  dominantColor: string;
   autoRotate: boolean;
-  /** editMode: orbiting always on, roses clickable, no auto-rotate */
   editMode?: boolean;
   selectedId?: string | null;
   onSelect?: (id: string | null) => void;
@@ -212,7 +192,7 @@ export interface BouquetScene3DProps {
 }
 
 export default function BouquetScene3D({
-  bouquetData, wrapperState, dominantColor, autoRotate,
+  bouquetData, wrapperState, autoRotate,
   editMode, selectedId, onSelect, onTyingComplete,
 }: BouquetScene3DProps) {
   useEffect(() => {
@@ -224,7 +204,6 @@ export default function BouquetScene3D({
     useGLTF.preload('/assets/3d/wrappers/wrapper_ribbon_tied_base.glb');
   }, []);
 
-  // Controls are always on in editMode (except during tying animation)
   const controlsEnabled = editMode
     ? wrapperState !== 'tying'
     : wrapperState === 'ribbonTied';
@@ -247,7 +226,6 @@ export default function BouquetScene3D({
         <BouquetGroup
           bouquetData={bouquetData}
           wrapperState={wrapperState}
-          dominantColor={dominantColor}
           selectedId={selectedId}
           onSelect={onSelect}
           editMode={editMode}
