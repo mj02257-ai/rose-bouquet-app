@@ -9,43 +9,41 @@ import BouquetCanvas from '@/components/BouquetCanvas';
 import PropertiesPanel from '@/components/PropertiesPanel';
 import ShareModal from '@/components/ShareModal';
 import ShowcaseView from '@/components/ShowcaseView';
-import BouquetWrapper from '@/components/BouquetWrapper';
-import RoseObject from '@/components/RoseObject';
 
 let idCounter = 0;
 const generateId = () => `rose-${Date.now()}-${++idCounter}`;
 
 const MAX_HISTORY = 30;
 
-// Dominant rose color: most frequent type, tie-break = last added
+// Most-frequent rose type; ties broken by last-added
 function getDominantColor(roses: BouquetRose[]): string {
   if (roses.length === 0) return '#C0392B';
   const counts: Record<string, number> = {};
   const lastIdx: Record<string, number> = {};
   roses.forEach((r, i) => {
-    counts[r.roseTypeId] = (counts[r.roseTypeId] ?? 0) + 1;
+    counts[r.roseTypeId]  = (counts[r.roseTypeId] ?? 0) + 1;
     lastIdx[r.roseTypeId] = i;
   });
-  const dominant = Object.keys(counts).sort((a, b) => {
-    if (counts[b] !== counts[a]) return counts[b] - counts[a];
-    return lastIdx[b] - lastIdx[a];
-  })[0];
+  const dominant = Object.keys(counts).sort((a, b) =>
+    counts[b] !== counts[a] ? counts[b] - counts[a] : lastIdx[b] - lastIdx[a]
+  )[0];
   return ROSES.find((r) => r.id === dominant)?.color ?? '#C0392B';
 }
 
 export default function HomePage() {
-  const [roses, setRoses] = useState<BouquetRose[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [message, setMessage] = useState('');
-  const [wrapperId, setWrapperId] = useState(DEFAULT_WRAPPER_ID);
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [roses, setRoses]             = useState<BouquetRose[]>([]);
+  const [selectedId, setSelectedId]   = useState<string | null>(null);
+  const [message, setMessage]         = useState('');
+  const [wrapperId, setWrapperId]     = useState(DEFAULT_WRAPPER_ID);
+  const [isPreviewMode, setIsPreviewMode]   = useState(false);
   const [isShowcaseMode, setIsShowcaseMode] = useState(false);
-  const [isWrapping, setIsWrapping]         = useState(false);
-  const [wrapperState, setWrapperState]     = useState<WrapperState>('wrapped');
   const [showShareModal, setShowShareModal] = useState(false);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [history, setHistory]         = useState<HistoryEntry[]>([]);
+  const [isLibraryOpen, setIsLibraryOpen]       = useState(false);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
+
+  // State for the 3D canvas in the editing area
+  const [editWrapperState, setEditWrapperState] = useState<WrapperState>('wrapped');
 
   const saveHistory = useCallback(
     (currentRoses: BouquetRose[], currentMessage: string) => {
@@ -117,8 +115,6 @@ export default function HomePage() {
   const handleBringForward = useCallback(() => {
     if (!selectedId) return;
     setRoses((prev) => {
-      const rose = prev.find((r) => r.id === selectedId);
-      if (!rose) return prev;
       const maxZ = Math.max(...prev.map((r) => r.zIndex));
       return prev.map((r) => (r.id === selectedId ? { ...r, zIndex: maxZ + 1 } : r));
     });
@@ -127,8 +123,6 @@ export default function HomePage() {
   const handleSendBackward = useCallback(() => {
     if (!selectedId) return;
     setRoses((prev) => {
-      const rose = prev.find((r) => r.id === selectedId);
-      if (!rose) return prev;
       const minZ = Math.min(...prev.map((r) => r.zIndex));
       return prev.map((r) => (r.id === selectedId ? { ...r, zIndex: minZ - 1 } : r));
     });
@@ -136,10 +130,7 @@ export default function HomePage() {
 
   const handleDelete = useCallback(() => {
     if (!selectedId) return;
-    setRoses((prev) => {
-      saveHistory(prev, message);
-      return prev.filter((r) => r.id !== selectedId);
-    });
+    setRoses((prev) => { saveHistory(prev, message); return prev.filter((r) => r.id !== selectedId); });
     setSelectedId(null);
   }, [selectedId, message, saveHistory]);
 
@@ -155,118 +146,71 @@ export default function HomePage() {
   }, []);
 
   const handleClearAll = useCallback(() => {
-    setRoses((prev) => {
-      saveHistory(prev, message);
-      return [];
-    });
+    setRoses((prev) => { saveHistory(prev, message); return []; });
     setSelectedId(null);
   }, [message, saveHistory]);
 
-  // CSS wrapping overlay → open showcase in 'tying' state
+  // "완성하기" → start tying animation in the 3D editing canvas
   const handleComplete = useCallback(() => {
     if (roses.length === 0) return;
-    setIsWrapping(true);
-    setTimeout(() => {
-      setIsWrapping(false);
-      setWrapperState('tying');
-      setIsShowcaseMode(true);
-    }, 1400);
+    setEditWrapperState('tying');
   }, [roses.length]);
 
+  // Called by BouquetScene3D when ribbon finishes tying
   const handleTyingComplete = useCallback(() => {
-    setWrapperState('ribbonTied');
+    setEditWrapperState('ribbonTied');
+    // Brief pause so user sees the tied result before showcase opens
+    setTimeout(() => setIsShowcaseMode(true), 500);
   }, []);
 
   const handleCloseShowcase = useCallback(() => {
     setIsShowcaseMode(false);
-    setWrapperState('wrapped');
+    setEditWrapperState('wrapped');
   }, []);
 
-  const selectedRose = roses.find((r) => r.id === selectedId) || null;
+  const selectedRose     = roses.find((r) => r.id === selectedId) || null;
   const selectedRoseType = selectedRose ? ROSES.find((r) => r.id === selectedRose.roseTypeId) || null : null;
-  const usedColors = Array.from(new Set(roses.map((r) => r.roseTypeId)))
+  const usedColors       = Array.from(new Set(roses.map((r) => r.roseTypeId)))
     .map((id) => ROSES.find((r) => r.id === id)?.color || '')
     .filter(Boolean);
   const selectedWrapper = WRAPPERS.find((w) => w.id === wrapperId) ?? WRAPPERS[0];
-  const dominantColor = getDominantColor(roses);
-
+  const dominantColor   = getDominantColor(roses);
   const bouquetData: BouquetData = { roses, wrapperId, message };
 
-  // Save to localStorage
   useEffect(() => {
-    try {
-      localStorage.setItem('rosery-bouquet', JSON.stringify({ roses, message, wrapperId }));
-    } catch {
-      // ignore storage errors
-    }
+    try { localStorage.setItem('rosery-bouquet', JSON.stringify({ roses, message, wrapperId })); } catch { /* ignore */ }
   }, [roses, message, wrapperId]);
 
-  // Restore from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem('rosery-bouquet');
       if (saved) {
-        const { roses: savedRoses, message: savedMessage, wrapperId: savedWrapperId } = JSON.parse(saved);
-        if (Array.isArray(savedRoses)) setRoses(savedRoses);
-        if (typeof savedMessage === 'string') setMessage(savedMessage);
-        if (typeof savedWrapperId === 'string') setWrapperId(savedWrapperId);
+        const { roses: sr, message: sm, wrapperId: sw } = JSON.parse(saved);
+        if (Array.isArray(sr)) setRoses(sr);
+        if (typeof sm === 'string') setMessage(sm);
+        if (typeof sw === 'string') setWrapperId(sw);
       }
-    } catch {
-      // ignore parse errors
-    }
+    } catch { /* ignore */ }
   }, []);
 
   return (
     <div className="flex flex-col h-screen bg-[#080808] overflow-hidden">
-      {/* ── CSS wrapping animation overlay ────────────────────────── */}
-      {isWrapping && (
-        <div
-          className="fixed inset-0 z-50 bg-[#060606] flex flex-col items-center justify-center"
-          style={{ animation: 'fadeUp 0.25s ease-out' }}
-        >
-          <div className="relative" style={{ width: 'clamp(220px,38vw,300px)', height: 'clamp(340px,58vw,460px)' }}>
-            {[...roses].sort((a, b) => a.zIndex - b.zIndex).map((rose) => {
-              const rt = ROSES.find((r) => r.id === rose.roseTypeId);
-              if (!rt) return null;
-              return (
-                <div
-                  key={rose.id}
-                  className="absolute pointer-events-none"
-                  style={{
-                    left: `${rose.x}%`,
-                    top:  `${rose.y * 0.66}%`,
-                    transform: `translate(-50%,-50%) scale(${rose.scale * 1.14}) rotate(${rose.rotation}deg)`,
-                    zIndex: rose.zIndex,
-                    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.5))',
-                    animation: 'fadeUp 0.35s ease-out both',
-                  }}
-                >
-                  <RoseObject roseType={rt} size={70} />
-                </div>
-              );
-            })}
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none">
-              <BouquetWrapper wrapper={selectedWrapper} width={222} height={242} isWrapping />
-            </div>
-          </div>
-          <p className="mt-8 text-[11px] text-white/28 tracking-widest">꽃다발을 포장하는 중…</p>
-        </div>
-      )}
 
-      {/* ── 3D Showcase mode ───────────────────────────────────────── */}
+      {/* ── 3D Showcase (full-screen dark overlay) ─────────────── */}
       {isShowcaseMode && (
         <ShowcaseView
           bouquetData={bouquetData}
           wrapper={selectedWrapper}
-          wrapperState={wrapperState}
+          wrapperState="ribbonTied"
           dominantColor={dominantColor}
-          onTyingComplete={handleTyingComplete}
+          onTyingComplete={() => {/* already tied when showcase opens */}}
           onClose={handleCloseShowcase}
           onSend={() => { handleCloseShowcase(); setShowShareModal(true); }}
         />
       )}
 
-      {!isPreviewMode && !isShowcaseMode && !isWrapping && (
+      {/* ── Header (hidden during preview / showcase) ──────────── */}
+      {!isPreviewMode && !isShowcaseMode && (
         <Header
           onUndo={handleUndo}
           onClearAll={handleClearAll}
@@ -289,7 +233,8 @@ export default function HomePage() {
         </div>
       )}
 
-      {!isShowcaseMode && !isWrapping && (
+      {/* ── Main editing layout ─────────────────────────────────── */}
+      {!isShowcaseMode && (
         <div className="flex flex-1 overflow-hidden">
           {!isPreviewMode && (
             <RoseLibrary
@@ -303,16 +248,22 @@ export default function HomePage() {
           )}
 
           <main className="flex-1 relative overflow-hidden">
+            {/* ── 3D editing canvas ── */}
             <BouquetCanvas
               roses={roses}
               selectedId={selectedId}
               wrapper={selectedWrapper}
+              wrapperState={editWrapperState}
+              dominantColor={dominantColor}
+              message={message}
               onSelect={handleSelect}
               onMove={handleMove}
               onDrop={handleDrop}
+              onTyingComplete={handleTyingComplete}
               isPreviewMode={isPreviewMode}
             />
 
+            {/* Mobile action bar */}
             {!isPreviewMode && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 lg:hidden z-20">
                 <button
@@ -329,9 +280,9 @@ export default function HomePage() {
                 </button>
                 <button
                   onClick={handleComplete}
-                  disabled={roses.length === 0}
+                  disabled={roses.length === 0 || editWrapperState === 'tying'}
                   className={`px-4 py-2 rounded-sm text-[11px] font-semibold backdrop-blur-md transition-all ${
-                    roses.length > 0
+                    roses.length > 0 && editWrapperState !== 'tying'
                       ? 'bg-[#F0EDE8] text-[#0A0A0A]'
                       : 'bg-white/[0.05] text-white/20 cursor-not-allowed'
                   }`}
