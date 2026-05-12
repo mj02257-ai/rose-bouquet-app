@@ -40,7 +40,7 @@ export default function HomePage() {
   );
 
   const addRose = useCallback(
-    (roseType: RoseType, x = 45 + Math.random() * 10, y = 40 + Math.random() * 20) => {
+    (roseType: RoseType, x = 30 + Math.random() * 40, y = 35 + Math.random() * 30) => {
       setRoses((prev) => {
         saveHistory(prev, message);
         const maxZ = prev.length > 0 ? Math.max(...prev.map((r) => r.zIndex)) : 0;
