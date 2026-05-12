@@ -41,3 +41,5 @@ export type HistoryEntry = {
   roses: BouquetRose[];
   message: string;
 };
+
+export type WrapperState = 'wrapped' | 'tying' | 'ribbonTied';
