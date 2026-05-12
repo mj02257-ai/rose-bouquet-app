@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { RoseType } from '@/types/bouquet';
 import { ROSES, CATEGORIES, CategoryFilter } from '@/lib/roseData';
 import RoseCard from './RoseCard';
-import WrapperSelector from './WrapperSelector';
 
 interface RoseLibraryProps {
   onAddRose: (rose: RoseType) => void;
@@ -15,7 +14,7 @@ interface RoseLibraryProps {
   onWrapperChange: (id: string) => void;
 }
 
-export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose, wrapperId, onWrapperChange }: RoseLibraryProps) {
+export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose }: RoseLibraryProps) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('All');
 
@@ -124,8 +123,6 @@ export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose, w
           )}
         </div>
 
-        {/* Wrapper selector — pinned at bottom of panel */}
-        <WrapperSelector selectedId={wrapperId} onChange={onWrapperChange} />
       </aside>
     </>
   );
