@@ -6,7 +6,6 @@ interface PropertiesPanelProps {
   selectedRose: BouquetRose | null;
   roseType: RoseType | null;
   totalRoses: number;
-  usedColors: string[];
   message: string;
   onMessageChange: (msg: string) => void;
   onScaleChange: (scale: number) => void;
@@ -29,7 +28,6 @@ export default function PropertiesPanel({
   selectedRose,
   roseType,
   totalRoses,
-  usedColors,
   message,
   onMessageChange,
   onScaleChange,
@@ -151,22 +149,6 @@ export default function PropertiesPanel({
               >
                 이 장미 제거
               </button>
-            </div>
-          )}
-
-          {/* ── Bouquet summary ── */}
-          {usedColors.length > 0 && (
-            <div className="px-4 py-3 border-b border-black/[0.06]">
-              <p className="text-[11px] text-black/28 mb-2">꽃다발 구성</p>
-              <div className="flex gap-1.5 flex-wrap">
-                {usedColors.map((color) => (
-                  <div
-                    key={color}
-                    className="w-4 h-4 rounded-full border border-black/15"
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
             </div>
           )}
 

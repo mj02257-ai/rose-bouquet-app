@@ -15,21 +15,6 @@ const generateId = () => `rose-${Date.now()}-${++idCounter}`;
 
 const MAX_HISTORY = 30;
 
-// Most-frequent rose type; ties broken by last-added
-function getDominantColor(roses: BouquetRose[]): string {
-  if (roses.length === 0) return '#C0392B';
-  const counts: Record<string, number> = {};
-  const lastIdx: Record<string, number> = {};
-  roses.forEach((r, i) => {
-    counts[r.roseTypeId]  = (counts[r.roseTypeId] ?? 0) + 1;
-    lastIdx[r.roseTypeId] = i;
-  });
-  const dominant = Object.keys(counts).sort((a, b) =>
-    counts[b] !== counts[a] ? counts[b] - counts[a] : lastIdx[b] - lastIdx[a]
-  )[0];
-  return ROSES.find((r) => r.id === dominant)?.color ?? '#C0392B';
-}
-
 export default function HomePage() {
   const [roses, setRoses]             = useState<BouquetRose[]>([]);
   const [selectedId, setSelectedId]   = useState<string | null>(null);
@@ -42,7 +27,6 @@ export default function HomePage() {
   const [isLibraryOpen, setIsLibraryOpen]       = useState(false);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
 
-  // State for the 3D canvas in the editing area
   const [editWrapperState, setEditWrapperState] = useState<WrapperState>('wrapped');
 
   const saveHistory = useCallback(
@@ -150,16 +134,13 @@ export default function HomePage() {
     setSelectedId(null);
   }, [message, saveHistory]);
 
-  // "완성하기" → start tying animation in the 3D editing canvas
   const handleComplete = useCallback(() => {
     if (roses.length === 0) return;
     setEditWrapperState('tying');
   }, [roses.length]);
 
-  // Called by BouquetScene3D when ribbon finishes tying
   const handleTyingComplete = useCallback(() => {
     setEditWrapperState('ribbonTied');
-    // Brief pause so user sees the tied result before showcase opens
     setTimeout(() => setIsShowcaseMode(true), 500);
   }, []);
 
@@ -170,11 +151,7 @@ export default function HomePage() {
 
   const selectedRose     = roses.find((r) => r.id === selectedId) || null;
   const selectedRoseType = selectedRose ? ROSES.find((r) => r.id === selectedRose.roseTypeId) || null : null;
-  const usedColors       = Array.from(new Set(roses.map((r) => r.roseTypeId)))
-    .map((id) => ROSES.find((r) => r.id === id)?.color || '')
-    .filter(Boolean);
-  const selectedWrapper = WRAPPERS.find((w) => w.id === wrapperId) ?? WRAPPERS[0];
-  const dominantColor   = getDominantColor(roses);
+  const selectedWrapper  = WRAPPERS.find((w) => w.id === wrapperId) ?? WRAPPERS[0];
   const bouquetData: BouquetData = { roses, wrapperId, message };
 
   useEffect(() => {
@@ -196,20 +173,17 @@ export default function HomePage() {
   return (
     <div className="flex flex-col h-screen bg-[#080808] overflow-hidden">
 
-      {/* ── 3D Showcase (full-screen dark overlay) ─────────────── */}
       {isShowcaseMode && (
         <ShowcaseView
           bouquetData={bouquetData}
           wrapper={selectedWrapper}
           wrapperState="ribbonTied"
-          dominantColor={dominantColor}
           onTyingComplete={() => {/* already tied when showcase opens */}}
           onClose={handleCloseShowcase}
           onSend={() => { handleCloseShowcase(); setShowShareModal(true); }}
         />
       )}
 
-      {/* ── Header (hidden during preview / showcase) ──────────── */}
       {!isPreviewMode && !isShowcaseMode && (
         <Header
           onUndo={handleUndo}
@@ -233,7 +207,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ── Main editing layout ─────────────────────────────────── */}
       {!isShowcaseMode && (
         <div className="flex flex-1 overflow-hidden">
           {!isPreviewMode && (
@@ -248,13 +221,11 @@ export default function HomePage() {
           )}
 
           <main className="flex-1 relative overflow-hidden">
-            {/* ── 3D editing canvas ── */}
             <BouquetCanvas
               roses={roses}
               selectedId={selectedId}
               wrapper={selectedWrapper}
               wrapperState={editWrapperState}
-              dominantColor={dominantColor}
               message={message}
               onSelect={handleSelect}
               onMove={handleMove}
@@ -263,7 +234,6 @@ export default function HomePage() {
               isPreviewMode={isPreviewMode}
             />
 
-            {/* Mobile action bar */}
             {!isPreviewMode && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 lg:hidden z-20">
                 <button
@@ -298,7 +268,6 @@ export default function HomePage() {
               selectedRose={selectedRose}
               roseType={selectedRoseType}
               totalRoses={roses.length}
-              usedColors={usedColors}
               message={message}
               onMessageChange={setMessage}
               onScaleChange={handleScaleChange}
