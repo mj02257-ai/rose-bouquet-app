@@ -4,7 +4,6 @@ import { useRef, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { BouquetRose, BouquetData, WrapperStyle, WrapperState } from '@/types/bouquet';
 
-// Three.js Canvas must not be server-rendered
 const BouquetScene3D = dynamic(() => import('./BouquetScene3D'), { ssr: false });
 
 interface BouquetCanvasProps {
@@ -66,7 +65,6 @@ export default function BouquetCanvas({
       onDragLeave={!isPreviewMode ? handleDragLeave : undefined}
       onDrop={!isPreviewMode ? handleDrop : undefined}
     >
-      {/* ── 3D scene fills the entire canvas ─────────────────── */}
       <BouquetScene3D
         bouquetData={bouquetData}
         wrapperState={wrapperState}
@@ -77,19 +75,16 @@ export default function BouquetCanvas({
         onTyingComplete={onTyingComplete}
       />
 
-      {/* Drag-over border indicator */}
       {isDragOver && (
         <div className="absolute inset-0 border border-dashed border-white/20 pointer-events-none z-10" />
       )}
 
-      {/* Block interaction during tying animation */}
       {isTying && (
         <div className="absolute inset-0 pointer-events-auto z-20 flex items-end justify-center pb-6">
           <p className="text-[10px] text-white/22 tracking-widest select-none">리본을 묶는 중…</p>
         </div>
       )}
 
-      {/* Empty state overlay */}
       {roses.length === 0 && !isPreviewMode && !isTying && (
         <div
           className="absolute inset-0 flex flex-col items-center gap-2 pointer-events-none"

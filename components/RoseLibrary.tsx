@@ -23,8 +23,7 @@ export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose }:
     const matchSearch =
       search === '' ||
       r.name.toLowerCase().includes(search.toLowerCase()) ||
-      r.meaningKo.includes(search) ||
-      r.meaningEn.toLowerCase().includes(search.toLowerCase());
+      r.meaningKo.includes(search);
     return matchCat && matchSearch;
   });
 
@@ -49,7 +48,7 @@ export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose }:
           top-0 left-0 lg:top-auto lg:left-auto
         `}
       >
-        {/* ── Panel top: search + mobile close ── */}
+        {/* ── Panel top ── */}
         <div className="px-4 pt-4 pb-3 flex-shrink-0 border-b border-white/[0.06]">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[11px] text-white/30 font-medium">색을 골라보세요</p>
@@ -68,10 +67,7 @@ export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose }:
           <div className="relative">
             <svg
               className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20"
-              width="13"
-              height="13"
-              viewBox="0 0 13 13"
-              fill="none"
+              width="13" height="13" viewBox="0 0 13 13" fill="none"
             >
               <circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" strokeWidth="1.2"/>
               <path d="M9.5 9.5l2.5 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
@@ -122,7 +118,6 @@ export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose }:
             ))
           )}
         </div>
-
       </aside>
     </>
   );

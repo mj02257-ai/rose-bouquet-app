@@ -15,7 +15,6 @@ const generateId = () => `rose-${Date.now()}-${++idCounter}`;
 
 const MAX_HISTORY = 30;
 
-
 export default function HomePage() {
   const [roses, setRoses]             = useState<BouquetRose[]>([]);
   const [selectedId, setSelectedId]   = useState<string | null>(null);
@@ -28,7 +27,6 @@ export default function HomePage() {
   const [isLibraryOpen, setIsLibraryOpen]       = useState(false);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
 
-  // State for the 3D canvas in the editing area
   const [editWrapperState, setEditWrapperState] = useState<WrapperState>('wrapped');
 
   const saveHistory = useCallback(
@@ -42,7 +40,7 @@ export default function HomePage() {
   );
 
   const addRose = useCallback(
-    (roseType: RoseType, x = 45 + Math.random() * 10, y = 40 + Math.random() * 20) => {
+    (roseType: RoseType, x = 30 + Math.random() * 40, y = 35 + Math.random() * 30) => {
       setRoses((prev) => {
         saveHistory(prev, message);
         const maxZ = prev.length > 0 ? Math.max(...prev.map((r) => r.zIndex)) : 0;
@@ -136,16 +134,13 @@ export default function HomePage() {
     setSelectedId(null);
   }, [message, saveHistory]);
 
-  // "완성하기" → start tying animation in the 3D editing canvas
   const handleComplete = useCallback(() => {
     if (roses.length === 0) return;
     setEditWrapperState('tying');
   }, [roses.length]);
 
-  // Called by BouquetScene3D when ribbon finishes tying
   const handleTyingComplete = useCallback(() => {
     setEditWrapperState('ribbonTied');
-    // Brief pause so user sees the tied result before showcase opens
     setTimeout(() => setIsShowcaseMode(true), 500);
   }, []);
 
@@ -178,7 +173,6 @@ export default function HomePage() {
   return (
     <div className="flex flex-col h-screen bg-[#080808] overflow-hidden">
 
-      {/* ── 3D Showcase (full-screen dark overlay) ─────────────── */}
       {isShowcaseMode && (
         <ShowcaseView
           bouquetData={bouquetData}
@@ -190,7 +184,6 @@ export default function HomePage() {
         />
       )}
 
-      {/* ── Header (hidden during preview / showcase) ──────────── */}
       {!isPreviewMode && !isShowcaseMode && (
         <Header
           onUndo={handleUndo}
@@ -214,7 +207,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ── Main editing layout ─────────────────────────────────── */}
       {!isShowcaseMode && (
         <div className="flex flex-1 overflow-hidden">
           {!isPreviewMode && (
@@ -229,7 +221,6 @@ export default function HomePage() {
           )}
 
           <main className="flex-1 relative overflow-hidden">
-            {/* ── 3D editing canvas ── */}
             <BouquetCanvas
               roses={roses}
               selectedId={selectedId}
@@ -243,7 +234,6 @@ export default function HomePage() {
               isPreviewMode={isPreviewMode}
             />
 
-            {/* Mobile action bar */}
             {!isPreviewMode && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 lg:hidden z-20">
                 <button

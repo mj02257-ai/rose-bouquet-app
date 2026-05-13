@@ -17,7 +17,7 @@ export default function RoseCard({ rose, onAdd, onDragStart }: RoseCardProps) {
       onDragStart={(e) => onDragStart(e, rose)}
     >
       {/* Color dot */}
-      <div className="flex-shrink-0 flex items-center justify-center w-11 h-11">
+      <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
         <div
           className="w-3 h-3 rounded-full"
           style={{ backgroundColor: rose.color }}

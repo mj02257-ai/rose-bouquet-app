@@ -40,7 +40,6 @@ export default function ShowcaseView({
         animation: entered ? 'showcaseIn 0.55s cubic-bezier(0.16,1,0.3,1) both' : undefined,
       }}
     >
-      {/* ── Header ─────────────────────────────────────────────── */}
       <div className="flex-shrink-0 flex items-center justify-between px-5 h-14 border-b border-white/[0.06]">
         <div>
           <p className="text-[10px] text-white/22 tracking-[0.08em] uppercase font-light">완성된 꽃다발</p>
@@ -81,7 +80,6 @@ export default function ShowcaseView({
         </div>
       </div>
 
-      {/* ── 3D Canvas ──────────────────────────────────────────── */}
       <div className="flex-1 relative">
         <BouquetScene3D
           bouquetData={bouquetData}
@@ -103,7 +101,6 @@ export default function ShowcaseView({
         )}
       </div>
 
-      {/* ── Message footer ─────────────────────────────────────── */}
       {bouquetData.message && (
         <div className="flex-shrink-0 px-6 py-3.5 border-t border-white/[0.06] text-center">
           <p className="text-[12px] text-white/35 italic leading-relaxed">
