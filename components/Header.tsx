@@ -58,7 +58,7 @@ export default function Header({
           )}
           <div className="hidden md:block w-px h-4 bg-black/12" />
           <span className="hidden md:block text-[11px] text-black/28 font-light tracking-[0.06em]">
-            성년의 날 장미 선물
+            성년의 날, 장미꽃 선물
           </span>
         </div>
       </div>

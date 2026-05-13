@@ -17,8 +17,8 @@ const notoSansKR = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  title: 'ANDZ — 성년의 날 장미 꽃다발',
-  description: '어른이 된 오늘, 한 송이의 마음을 전해보세요. ANDZ 성년의 날 장미 선물.',
+  title: '성년의 날, 장미꽃 선물',
+  description: '어른이 된 오늘, 한 송이의 마음을 전해보세요. 성년의 날 장미꽃 선물.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
