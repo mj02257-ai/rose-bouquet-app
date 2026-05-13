@@ -62,7 +62,7 @@ export default function PropertiesPanel({
         {/* ── Panel top ── */}
         <div className="px-4 pt-4 pb-3 flex-shrink-0 border-b border-black/[0.06] flex items-center justify-between">
           <span className="text-[11px] text-black/35 font-medium">
-            {totalRoses > 0 ? `${totalRoses}송이 선택됨` : '꽃을 추가해보세요'}
+            {totalRoses >= 9 ? `최대 9송이` : totalRoses > 0 ? `${totalRoses}송이 선택됨` : '꽃을 추가해보세요'}
           </span>
           <button
             className="lg:hidden text-black/30 hover:text-black/70 transition-colors"

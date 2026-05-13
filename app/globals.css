@@ -13,8 +13,8 @@
     --color-text-secondary: #6A6560;
     --color-text-muted: #A09890;
 
-    /* Canvas: near-black editorial backdrop */
-    --color-canvas: #0A0A09;
+    /* Canvas: warm white editorial backdrop */
+    --color-canvas: #F4F2EE;
   }
 
   * { box-sizing: border-box; }

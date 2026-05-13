@@ -14,6 +14,7 @@ let idCounter = 0;
 const generateId = () => `rose-${Date.now()}-${++idCounter}`;
 
 const MAX_HISTORY = 30;
+const MAX_ROSES   = 9;
 
 export default function HomePage() {
   const [roses, setRoses]             = useState<BouquetRose[]>([]);
@@ -26,7 +27,6 @@ export default function HomePage() {
   const [history, setHistory]         = useState<HistoryEntry[]>([]);
   const [isLibraryOpen, setIsLibraryOpen]       = useState(false);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
-
   const [editWrapperState, setEditWrapperState] = useState<WrapperState>('wrapped');
 
   const saveHistory = useCallback(
@@ -42,6 +42,7 @@ export default function HomePage() {
   const addRose = useCallback(
     (roseType: RoseType, x = 30 + Math.random() * 40, y = 35 + Math.random() * 30) => {
       setRoses((prev) => {
+        if (prev.length >= MAX_ROSES) return prev; // max 9 roses
         saveHistory(prev, message);
         const maxZ = prev.length > 0 ? Math.max(...prev.map((r) => r.zIndex)) : 0;
         const newRose: BouquetRose = {
@@ -153,6 +154,8 @@ export default function HomePage() {
   const selectedRoseType = selectedRose ? ROSES.find((r) => r.id === selectedRose.roseTypeId) || null : null;
   const selectedWrapper  = WRAPPERS.find((w) => w.id === wrapperId) ?? WRAPPERS[0];
   const bouquetData: BouquetData = { roses, wrapperId, message };
+  const isTying  = editWrapperState === 'tying';
+  const atMaxRoses = roses.length >= MAX_ROSES;
 
   useEffect(() => {
     try { localStorage.setItem('rosery-bouquet', JSON.stringify({ roses, message, wrapperId })); } catch { /* ignore */ }
@@ -163,7 +166,7 @@ export default function HomePage() {
       const saved = localStorage.getItem('rosery-bouquet');
       if (saved) {
         const { roses: sr, message: sm, wrapperId: sw } = JSON.parse(saved);
-        if (Array.isArray(sr)) setRoses(sr);
+        if (Array.isArray(sr)) setRoses(sr.slice(0, MAX_ROSES));
         if (typeof sm === 'string') setMessage(sm);
         if (typeof sw === 'string') setWrapperId(sw);
       }
@@ -171,14 +174,14 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-[#080808] overflow-hidden">
+    <div className="flex flex-col bg-white h-screen lg:overflow-hidden">
 
       {isShowcaseMode && (
         <ShowcaseView
           bouquetData={bouquetData}
           wrapper={selectedWrapper}
           wrapperState="ribbonTied"
-          onTyingComplete={() => {/* already tied when showcase opens */}}
+          onTyingComplete={() => {}}
           onClose={handleCloseShowcase}
           onSend={() => { handleCloseShowcase(); setShowShareModal(true); }}
         />
@@ -200,7 +203,7 @@ export default function HomePage() {
         <div className="fixed top-4 right-4 z-50">
           <button
             onClick={() => setIsPreviewMode(false)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-sm bg-[#F0EDE8] text-[#0A0A0A] text-[11px] font-semibold hover:bg-white transition-colors shadow-xl"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-sm bg-[#111110] text-white text-[11px] font-semibold hover:bg-black transition-colors shadow-xl"
           >
             ← 편집으로
           </button>
@@ -208,7 +211,9 @@ export default function HomePage() {
       )}
 
       {!isShowcaseMode && (
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden min-h-0">
+
+          {/* Left sidebar — overlay on mobile, fixed column on PC */}
           {!isPreviewMode && (
             <RoseLibrary
               onAddRose={(rose) => addRose(rose)}
@@ -220,49 +225,110 @@ export default function HomePage() {
             />
           )}
 
-          <main className="flex-1 relative overflow-hidden">
-            <BouquetCanvas
-              roses={roses}
-              selectedId={selectedId}
-              wrapper={selectedWrapper}
-              wrapperState={editWrapperState}
-              message={message}
-              onSelect={handleSelect}
-              onMove={handleMove}
-              onDrop={handleDrop}
-              onTyingComplete={handleTyingComplete}
-              isPreviewMode={isPreviewMode}
-            />
+          {/* Center column */}
+          <div className="flex flex-col flex-1 min-h-0 lg:overflow-hidden">
 
+            {/* 3D Canvas — 62 vh on mobile, fills flex space on PC */}
+            <main className="relative overflow-hidden h-[62vh] flex-shrink-0 lg:h-auto lg:flex-1"
+              style={{ backgroundColor: '#F4F2EE' }}
+            >
+              <BouquetCanvas
+                roses={roses}
+                selectedId={selectedId}
+                wrapper={selectedWrapper}
+                wrapperState={editWrapperState}
+                message={message}
+                onSelect={handleSelect}
+                onMove={handleMove}
+                onDrop={handleDrop}
+                onTyingComplete={handleTyingComplete}
+                isPreviewMode={isPreviewMode}
+              />
+
+              {isTying && (
+                <div className="absolute inset-0 pointer-events-auto z-20 flex items-end justify-center pb-6">
+                  <p className="text-[10px] text-black/30 tracking-widest select-none">리본을 묶는 중…</p>
+                </div>
+              )}
+
+              {roses.length === 0 && !isPreviewMode && !isTying && (
+                <div
+                  className="absolute inset-0 flex flex-col items-center gap-2 pointer-events-none"
+                  style={{ justifyContent: 'center', paddingBottom: '10%' }}
+                >
+                  <p className="text-[13px] text-black/25 font-light tracking-wide px-6 text-center">
+                    어른이 된 오늘, 한 송이의 마음을 전해보세요.
+                  </p>
+                  <p className="text-[10px] text-black/15 tracking-widest uppercase">
+                    tap or drag to add
+                  </p>
+                </div>
+              )}
+            </main>
+
+            {/* ── Mobile bottom section (hidden on PC) ── */}
             {!isPreviewMode && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 lg:hidden z-20">
-                <button
-                  onClick={() => setIsLibraryOpen(true)}
-                  className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/60 border border-white/[0.08] backdrop-blur-md"
-                >
-                  장미 선택
-                </button>
-                <button
-                  onClick={() => setIsPropertiesOpen(true)}
-                  className="px-4 py-2 rounded-sm bg-white/[0.08] text-[11px] font-medium text-white/60 border border-white/[0.08] backdrop-blur-md"
-                >
-                  메시지
-                </button>
+              <div className="lg:hidden flex-shrink-0 bg-white border-t border-black/[0.07] px-4 pt-4 pb-6 space-y-4">
+
+                {/* Rose type buttons */}
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <p className="text-[10px] text-black/35 tracking-widest uppercase font-medium">장미 선택</p>
+                    {atMaxRoses && (
+                      <p className="text-[10px] text-black/30">최대 {MAX_ROSES}송이까지 선택할 수 있습니다.</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {ROSES.map((rose) => (
+                      <button
+                        key={rose.id}
+                        onClick={() => addRose(rose)}
+                        disabled={atMaxRoses}
+                        className={`flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-sm border transition-all
+                          ${atMaxRoses
+                            ? 'border-black/[0.05] opacity-40 cursor-not-allowed'
+                            : 'border-black/[0.09] hover:border-black/20 hover:bg-black/[0.03] active:bg-black/[0.06]'
+                          }`}
+                      >
+                        <div
+                          className="w-5 h-5 rounded-full border border-black/10"
+                          style={{ backgroundColor: rose.color }}
+                        />
+                        <span className="text-[10px] text-black/45 font-medium">{rose.category}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Message */}
+                <div>
+                  <p className="text-[10px] text-black/35 tracking-widest uppercase font-medium mb-2">메시지 카드</p>
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="직접 메시지를 입력해보세요…"
+                    rows={2}
+                    className="w-full bg-black/[0.03] border border-black/[0.08] rounded-sm px-3 py-2.5 text-[12px] text-black/65 placeholder-black/22 focus:outline-none focus:border-black/18 resize-none transition-colors leading-relaxed"
+                  />
+                </div>
+
+                {/* Complete button */}
                 <button
                   onClick={handleComplete}
-                  disabled={roses.length === 0 || editWrapperState === 'tying'}
-                  className={`px-4 py-2 rounded-sm text-[11px] font-semibold backdrop-blur-md transition-all ${
-                    roses.length > 0 && editWrapperState !== 'tying'
-                      ? 'bg-[#F0EDE8] text-[#0A0A0A]'
-                      : 'bg-white/[0.05] text-white/20 cursor-not-allowed'
+                  disabled={roses.length === 0 || isTying}
+                  className={`w-full py-3.5 text-[13px] font-semibold rounded-sm transition-all duration-200 ${
+                    roses.length > 0 && !isTying
+                      ? 'bg-[#111110] text-white hover:bg-black active:bg-black/80'
+                      : 'bg-black/[0.05] text-black/22 cursor-not-allowed border border-black/[0.07]'
                   }`}
                 >
-                  완성
+                  {roses.length > 0 ? `꽃다발 완성하기 →` : '장미를 추가해보세요'}
                 </button>
               </div>
             )}
-          </main>
+          </div>
 
+          {/* Right panel — overlay on mobile, fixed column on PC */}
           {!isPreviewMode && (
             <PropertiesPanel
               selectedRose={selectedRose}
