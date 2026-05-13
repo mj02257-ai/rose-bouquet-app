@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { BouquetRose, BouquetData, RoseType, HistoryEntry, WrapperState } from '@/types/bouquet';
 import { ROSES, WRAPPERS, DEFAULT_WRAPPER_ID } from '@/lib/roseData';
 import Header from '@/components/Header';
@@ -28,6 +28,7 @@ export default function HomePage() {
   const [isLibraryOpen, setIsLibraryOpen]       = useState(false);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [editWrapperState, setEditWrapperState] = useState<WrapperState>('wrapped');
+  const pendingRoseIdRef = useRef<string | null>(null);
 
   const saveHistory = useCallback(
     (currentRoses: BouquetRose[], currentMessage: string) => {
@@ -41,12 +42,13 @@ export default function HomePage() {
 
   const addRose = useCallback(
     (roseType: RoseType, x = 30 + Math.random() * 40, y = 35 + Math.random() * 30) => {
+      const newId = generateId();
       setRoses((prev) => {
-        if (prev.length >= MAX_ROSES) return prev; // max 9 roses
+        if (prev.length >= MAX_ROSES) return prev;
         saveHistory(prev, message);
         const maxZ = prev.length > 0 ? Math.max(...prev.map((r) => r.zIndex)) : 0;
         const newRose: BouquetRose = {
-          id: generateId(),
+          id: newId,
           roseTypeId: roseType.id,
           x,
           y,
@@ -54,11 +56,21 @@ export default function HomePage() {
           rotation: Math.random() * 30 - 15,
           zIndex: maxZ + 1,
         };
+        pendingRoseIdRef.current = newId;
         return [...prev, newRose];
       });
     },
     [message, saveHistory]
   );
+
+  // Auto-select the newly added rose after roses state updates
+  useEffect(() => {
+    if (!pendingRoseIdRef.current) return;
+    const id = pendingRoseIdRef.current;
+    pendingRoseIdRef.current = null;
+    setSelectedId(id);
+    setIsPropertiesOpen(true);
+  }, [roses]);
 
   const handleDragStart = useCallback((e: React.DragEvent, rose: RoseType) => {
     e.dataTransfer.setData('roseTypeId', rose.id);
@@ -257,7 +269,7 @@ export default function HomePage() {
                   style={{ justifyContent: 'center', paddingBottom: '10%' }}
                 >
                   <p className="text-[13px] text-black/25 font-light tracking-wide px-6 text-center">
-                    어른이 된 오늘, 한 송이의 마음을 전해보세요.
+                    어른이 된 오늘을 축하해주세요.
                   </p>
                   <p className="text-[10px] text-black/15 tracking-widest uppercase">
                     tap or drag to add
