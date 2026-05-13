@@ -16,14 +16,28 @@ const ROSE_GLB: Record<string, string> = {
 const WRAPPER_GLB        = '/assets/3d/wrappers/wrapper_wrapped_base.glb';
 const WRAPPER_RIBBON_GLB = '/assets/3d/wrappers/wrapper_ribbon_tied_base.glb';
 
-// ── Clone GLTF scene preserving original materials (no colour override) ────────
-function cloneScene(scene: THREE.Group): THREE.Group {
+const WRAPPER_SCALE     = 0.78;
+const WRAPPER_OPENING_Y = 0.12; // target Y for wrapper's top edge in world space
+
+// ── Matte-black override for wrapper_wrapped_base.glb ─────────────────────────
+function makeMatteMat(): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color: new THREE.Color('#1E1E1E'),
+    roughness: 0.86,
+    metalness: 0.04,
+  });
+}
+
+// ── Clone GLTF scene, optionally overriding every mesh material ───────────────
+function cloneScene(scene: THREE.Group, overrideMat?: THREE.Material): THREE.Group {
   const clone = scene.clone(true);
   clone.traverse((node) => {
     const mesh = node as THREE.Mesh;
     if (!mesh.isMesh) return;
-    if (Array.isArray(mesh.material)) {
-      mesh.material = mesh.material.map((m) => (m as THREE.Material).clone() as THREE.Material);
+    if (overrideMat) {
+      mesh.material = overrideMat;
+    } else if (Array.isArray(mesh.material)) {
+      mesh.material = mesh.material.map((m) => (m as THREE.Material).clone());
     } else {
       mesh.material = (mesh.material as THREE.Material).clone();
     }
@@ -33,37 +47,34 @@ function cloneScene(scene: THREE.Group): THREE.Group {
 
 // ── Bouquet slot table ─────────────────────────────────────────────────────────
 // Each entry: [x, y, z, tiltX°, tiltZ°]
-// Y values are kept low so rose stems enter the wrapper opening.
-// Adjust wrapper.position Y and scale in WrapperModel if the new GLB has
-// different proportions — these positions assume the wrapper opening is near Y=0.
+// Y values position the rose origin so petals sit above the wrapper opening.
 const SLOTS: ReadonlyArray<[number, number, number, number, number]> = [
-  [  0.00,  0.02,  0.00,   -8,    0 ], // 0 center
-  [ -0.20, -0.05,  0.10,  -13,  +13 ], // 1 left-front (lower+forward)
-  [  0.20, -0.05,  0.10,  -13,  -13 ], // 2 right-front
-  [  0.00,  0.14, -0.10,   -5,    0 ], // 3 back-center (higher+back)
-  [ -0.18,  0.10, -0.07,   -7,   +9 ], // 4 left-back
-  [  0.18,  0.10, -0.07,   -7,   -9 ], // 5 right-back
-  [ -0.34,  0.02,  0.02,  -10,  +20 ], // 6 far-left
-  [  0.34,  0.02,  0.02,  -10,  -20 ], // 7 far-right
-  [  0.00, -0.14,  0.18,  -16,    0 ], // 8 front-bottom
+  [  0.00,  0.05,  0.00,   -8,    0 ], // 0 center
+  [ -0.20,  0.00,  0.10,  -13,  +13 ], // 1 left-front
+  [  0.20,  0.00,  0.10,  -13,  -13 ], // 2 right-front
+  [  0.00,  0.17, -0.10,   -5,    0 ], // 3 back-center (tallest)
+  [ -0.18,  0.13, -0.07,   -7,   +9 ], // 4 left-back
+  [  0.18,  0.13, -0.07,   -7,   -9 ], // 5 right-back
+  [ -0.34,  0.05,  0.02,  -10,  +20 ], // 6 far-left
+  [  0.34,  0.05,  0.02,  -10,  -20 ], // 7 far-right
+  [  0.00, -0.08,  0.18,  -16,    0 ], // 8 front-bottom
 ];
 
-// Slot visitation order per rose count (creates the bouquet shape)
 function getSlotOrder(total: number): number[] {
   switch (total) {
     case 1: return [0];
     case 2: return [1, 2];
-    case 3: return [3, 1, 2];           // triangle: back-high + left/right-front
-    case 4: return [3, 1, 2, 0];       // diamond
+    case 3: return [3, 1, 2];
+    case 4: return [3, 1, 2, 0];
     case 5: return [3, 1, 2, 4, 5];
     case 6: return [3, 1, 2, 4, 5, 0];
     case 7: return [3, 1, 2, 4, 5, 6, 7];
     case 8: return [3, 1, 2, 4, 5, 6, 7, 0];
-    default: return [3, 1, 2, 4, 5, 6, 7, 0, 8]; // 9
+    default: return [3, 1, 2, 4, 5, 6, 7, 0, 8];
   }
 }
 
-// ── Single rose — original Meshy texture, no material override ────────────────
+// ── Single rose — Meshy texture, no material override ─────────────────────────
 function RoseInstance({ roseTypeId }: { roseTypeId: string }) {
   const glbPath = ROSE_GLB[roseTypeId] ?? ROSE_GLB.red;
   const { scene } = useGLTF(glbPath);
@@ -71,7 +82,64 @@ function RoseInstance({ roseTypeId }: { roseTypeId: string }) {
   return <primitive object={cloned} />;
 }
 
-// ── Wrapper GLB — original material, always visible ───────────────────────────
+// ── Animated rose — drops in from above on mount, lerps on slot change ─────────
+interface AnimatedRoseProps {
+  roseTypeId: string;
+  targetX: number;
+  targetY: number;
+  targetZ: number;
+  scale: number;
+  rotX: number;
+  rotY: number;
+  rotZ: number;
+  isSelected: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onClick?: (e: any) => void;
+}
+
+function AnimatedRose({
+  roseTypeId, targetX, targetY, targetZ,
+  scale, rotX, rotY, rotZ,
+  isSelected, onClick,
+}: AnimatedRoseProps) {
+  const groupRef  = useRef<THREE.Group>(null!);
+  // Entrance: start above the target slot
+  const animPos   = useRef(new THREE.Vector3(targetX, targetY + 0.50, targetZ));
+  const targetVec = useRef(new THREE.Vector3(targetX, targetY, targetZ));
+
+  // Update target when slot changes (rearrangement animation)
+  useEffect(() => {
+    targetVec.current.set(targetX, targetY, targetZ);
+  }, [targetX, targetY, targetZ]);
+
+  useFrame((_, dt) => {
+    if (!groupRef.current) return;
+    const k = 1 - Math.exp(-dt * 7);
+    animPos.current.lerp(targetVec.current, k);
+    groupRef.current.position.copy(animPos.current);
+  });
+
+  return (
+    <group
+      ref={groupRef}
+      position={[targetX, targetY + 0.50, targetZ]}
+      scale={scale}
+      rotation={[rotX, rotY, rotZ]}
+      onClick={onClick}
+    >
+      <RoseInstance roseTypeId={roseTypeId} />
+
+      {isSelected && (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[1.5, 1.82, 48]} />
+          <meshBasicMaterial color="#222222" opacity={0.30} transparent side={THREE.DoubleSide} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+// ── Wrapper GLB ───────────────────────────────────────────────────────────────
 interface WrapperModelProps {
   wrapperState: WrapperState;
   onTyingComplete?: () => void;
@@ -81,28 +149,40 @@ function WrapperModel({ wrapperState, onTyingComplete }: WrapperModelProps) {
   const wrappedGlb    = useGLTF(WRAPPER_GLB);
   const ribbonTiedGlb = useGLTF(WRAPPER_RIBBON_GLB);
 
-  // Trigger showcase transition after a short visual pause
   useEffect(() => {
     if (wrapperState !== 'tying') return;
     const t = setTimeout(() => onTyingComplete?.(), 1200);
     return () => clearTimeout(t);
   }, [wrapperState, onTyingComplete]);
 
-  // Show ribbon GLB (which contains the ribbon) during and after tying
-  const useRibbon  = wrapperState === 'tying' || wrapperState === 'ribbonTied';
-  const activeScene = (useRibbon ? ribbonTiedGlb.scene : wrappedGlb.scene) as unknown as THREE.Group;
+  const useRibbon = wrapperState === 'tying' || wrapperState === 'ribbonTied';
 
-  // Clone preserving original GLB materials — NO colour/material override
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const cloned = useMemo(() => cloneScene(activeScene), [activeScene]);
+  // Matte black for wrapped base; ribbon tied keeps its original GLB materials
+  const matteMat = useMemo(() => makeMatteMat(), []);
+  const wrappedClone = useMemo(
+    () => cloneScene(wrappedGlb.scene as unknown as THREE.Group, matteMat),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [wrappedGlb.scene],
+  );
+  const ribbonClone = useMemo(
+    () => cloneScene(ribbonTiedGlb.scene as unknown as THREE.Group),
+    [ribbonTiedGlb.scene],
+  );
 
-  // Wrapper is always visible — even with 0 roses it anchors the composition.
-  // Adjust position Y and scale to match the actual new GLB proportions.
+  // Position wrapper so its top edge aligns with WRAPPER_OPENING_Y.
+  // Falls back to -0.68 when bounding box is unavailable (e.g. LFS pointer env).
+  const posY = useMemo(() => {
+    const src = useRibbon ? ribbonTiedGlb.scene : wrappedGlb.scene;
+    const bbox = new THREE.Box3().setFromObject(src as unknown as THREE.Object3D);
+    if (bbox.isEmpty() || !isFinite(bbox.max.y) || bbox.max.y <= 0) return -0.68;
+    return WRAPPER_OPENING_Y - bbox.max.y * WRAPPER_SCALE;
+  }, [useRibbon, wrappedGlb.scene, ribbonTiedGlb.scene]);
+
   return (
     <primitive
-      object={cloned}
-      position={[0, -0.68, 0]}
-      scale={[0.78, 0.78, 0.78]}
+      object={useRibbon ? ribbonClone : wrappedClone}
+      position={[0, posY, 0]}
+      scale={[WRAPPER_SCALE, WRAPPER_SCALE, WRAPPER_SCALE]}
     />
   );
 }
@@ -123,45 +203,33 @@ function BouquetGroup({
   const roses = bouquetData.roses;
   const total = roses.length;
 
-  // Scale multiplier decreases for large bouquets to prevent crowding
+  // Shrink roses slightly for larger bouquets to prevent crowding
   const baseScaleMult = total <= 3 ? 0.29 : total <= 6 ? 0.26 : 0.23;
-
   const slotOrder = getSlotOrder(Math.min(total, 9));
+  const DEG = Math.PI / 180;
 
   return (
     <group>
-      {/* Wrapper is the base object — always rendered */}
       <WrapperModel wrapperState={wrapperState} onTyingComplete={onTyingComplete} />
 
       {roses.map((rose, idx) => {
         const slotIdx = slotOrder[idx] ?? slotOrder[slotOrder.length - 1];
         const [sx, sy, sz, tiltX, tiltZ] = SLOTS[slotIdx];
-        const isSelected = editMode && selectedId === rose.id;
-        const DEG = Math.PI / 180;
 
         return (
-          <group
+          <AnimatedRose
             key={rose.id}
-            position={[sx, sy, sz]}
+            roseTypeId={rose.roseTypeId}
+            targetX={sx}
+            targetY={sy}
+            targetZ={sz}
             scale={rose.scale * baseScaleMult}
-            rotation={[
-              tiltX * DEG,
-              (rose.rotation * DEG),
-              tiltZ * DEG,
-            ]}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            onClick={editMode ? (e: any) => { e.stopPropagation(); onSelect?.(rose.id); } : undefined}
-          >
-            <RoseInstance roseTypeId={rose.roseTypeId} />
-
-            {/* Selection indicator — dark ring, visible on light background */}
-            {isSelected && (
-              <mesh rotation={[Math.PI / 2, 0, 0]}>
-                <ringGeometry args={[1.5, 1.82, 48]} />
-                <meshBasicMaterial color="#222222" opacity={0.30} transparent side={THREE.DoubleSide} />
-              </mesh>
-            )}
-          </group>
+            rotX={tiltX * DEG}
+            rotY={rose.rotation * DEG}
+            rotZ={tiltZ * DEG}
+            isSelected={!!(editMode && selectedId === rose.id)}
+            onClick={editMode ? (e) => { e.stopPropagation(); onSelect?.(rose.id); } : undefined}
+          />
         );
       })}
     </group>
@@ -205,7 +273,7 @@ export default function BouquetScene3D({
     ? wrapperState !== 'tying'
     : wrapperState === 'ribbonTied';
 
-  const cameraPos: [number, number, number] = editMode ? [0, 0.8, 3.8] : [0, 1.0, 4.2];
+  const cameraPos: [number, number, number]   = editMode ? [0, 0.8, 3.8] : [0, 1.0, 4.2];
   const orbitTarget: [number, number, number] = [0, 0.10, 0];
 
   return (
@@ -213,24 +281,23 @@ export default function BouquetScene3D({
       camera={{ position: cameraPos, fov: 42 }}
       gl={{ antialias: true, alpha: false }}
       onCreated={({ gl }) => {
-        // Light warm-white canvas background (matches white UI theme)
         gl.setClearColor(new THREE.Color('#F4F2EE'), 1);
         gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = 1.65;
+        gl.toneMappingExposure = 1.75;
       }}
       style={{ width: '100%', height: '100%' }}
       onPointerMissed={() => editMode && onSelect?.(null)}
     >
-      {/* Strong ambient — lifts all surfaces uniformly */}
-      <ambientLight intensity={1.4} color="#FFFFFF" />
-      {/* Primary key light — above-front, bright white */}
-      <directionalLight intensity={2.4} position={[1, 6, 4]} color="#FFFFFF" />
-      {/* Secondary fill — left side, warm */}
-      <directionalLight intensity={1.0} position={[-4, 3, 2]} color="#FFF8F0" />
-      {/* Front point — removes shadows from petal faces */}
-      <pointLight intensity={1.2} position={[0, 1.5, 4]} color="#FFFFFF" />
-      {/* Rim light — very subtle, outlines wrapper against bg */}
-      <pointLight intensity={0.25} position={[0, 3, -4]} color="#C8D8F0" />
+      {/* Bright ambient lifts the whole scene uniformly */}
+      <ambientLight intensity={1.55} color="#FFFFFF" />
+      {/* Primary key — above-front, bright white */}
+      <directionalLight intensity={2.6} position={[1, 6, 4]} color="#FFFFFF" />
+      {/* Fill — left side, slightly warm */}
+      <directionalLight intensity={1.1} position={[-4, 3, 2]} color="#FFF8F0" />
+      {/* Front point — removes petal face shadows */}
+      <pointLight intensity={1.3} position={[0, 1.5, 4]} color="#FFFFFF" />
+      {/* Soft rim — outlines wrapper against warm bg */}
+      <pointLight intensity={0.28} position={[0, 3, -4]} color="#C8D8F0" />
 
       <Suspense fallback={<LoadingMesh />}>
         <BouquetGroup
