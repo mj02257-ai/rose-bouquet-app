@@ -5,13 +5,13 @@ import { BouquetRose, RoseType } from '@/types/bouquet';
 interface PropertiesPanelProps {
   selectedRose: BouquetRose | null;
   roseType: RoseType | null;
+  pendingRoseType: RoseType | null;
   totalRoses: number;
   message: string;
   onMessageChange: (msg: string) => void;
   onScaleChange: (scale: number) => void;
   onRotationChange: (rotation: number) => void;
-  onBringForward: () => void;
-  onSendBackward: () => void;
+  onConfirmPlace: () => void;
   onDelete: () => void;
   onComplete: () => void;
   isOpen: boolean;
@@ -27,13 +27,13 @@ const SUGGESTED_MESSAGES = [
 export default function PropertiesPanel({
   selectedRose,
   roseType,
+  pendingRoseType,
   totalRoses,
   message,
   onMessageChange,
   onScaleChange,
   onRotationChange,
-  onBringForward,
-  onSendBackward,
+  onConfirmPlace,
   onDelete,
   onComplete,
   isOpen,
@@ -77,7 +77,32 @@ export default function PropertiesPanel({
 
         <div className="flex-1 overflow-y-auto">
 
-          {/* ── Rose edit controls ── */}
+          {/* ── Pending rose — confirm placement ── */}
+          {pendingRoseType && (
+            <div className="px-4 py-4 border-b border-black/[0.06] space-y-3">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full flex-shrink-0 border border-black/10"
+                  style={{ backgroundColor: pendingRoseType.color }}
+                />
+                <p className="text-[12px] text-black/70 font-medium">{pendingRoseType.name}</p>
+                <span className="ml-auto text-[10px] text-black/30">선택됨</span>
+              </div>
+              <button
+                onClick={onConfirmPlace}
+                disabled={totalRoses >= 9}
+                className={`w-full py-2.5 text-[12px] font-semibold rounded-sm transition-all duration-150
+                  ${totalRoses < 9
+                    ? 'bg-[#1A1816] text-white hover:bg-black'
+                    : 'bg-black/[0.05] text-black/22 cursor-not-allowed border border-black/[0.07]'
+                  }`}
+              >
+                {totalRoses < 9 ? '여기에 두기' : '최대 9송이'}
+              </button>
+            </div>
+          )}
+
+          {/* ── Selected rose edit controls ── */}
           {selectedRose && roseType && (
             <div className="px-4 py-4 border-b border-black/[0.06] space-y-4">
               <div className="flex items-center gap-2">
@@ -124,22 +149,6 @@ export default function PropertiesPanel({
                   onChange={(e) => onRotationChange(parseFloat(e.target.value))}
                   className="w-full"
                 />
-              </div>
-
-              {/* Layer controls */}
-              <div className="flex gap-2">
-                <button
-                  onClick={onBringForward}
-                  className="flex-1 py-1.5 text-[11px] font-medium rounded-sm border border-black/[0.09] text-black/45 hover:text-black/70 hover:border-black/20 transition-all"
-                >
-                  앞으로
-                </button>
-                <button
-                  onClick={onSendBackward}
-                  className="flex-1 py-1.5 text-[11px] font-medium rounded-sm border border-black/[0.09] text-black/45 hover:text-black/70 hover:border-black/20 transition-all"
-                >
-                  뒤로
-                </button>
               </div>
 
               {/* Delete */}
