@@ -68,6 +68,14 @@ function RoseInstance({ roseTypeId }: { roseTypeId: string }) {
   return <primitive object={cloned} />;
 }
 
+// ── Placeholder sphere colors while rose GLB loads ───────────────────────────
+const ROSE_PLACEHOLDER_COLORS: Record<string, string> = {
+  red:   '#C0392B',
+  pink:  '#E91E63',
+  white: '#F0F0F0',
+  peach: '#FFAB91',
+};
+
 // ── Pending rose — draggable in 3D on a horizontal plane ─────────────────────
 interface PendingRose3DProps {
   roseTypeId: string;
@@ -133,6 +141,8 @@ function PendingRose3D({
     };
   }, [gl, camera, plane]);
 
+  const placeholderColor = ROSE_PLACEHOLDER_COLORS[roseTypeId] ?? '#C0392B';
+
   return (
     <group
       position={[x3d, y3d, z3d]}
@@ -150,7 +160,15 @@ function PendingRose3D({
         <sphereGeometry args={[1.8, 8, 8]} />
         <meshBasicMaterial visible={false} />
       </mesh>
-      <RoseInstance roseTypeId={roseTypeId} />
+      {/* Rose GLB inside its own Suspense — shows colored sphere instantly while loading */}
+      <Suspense fallback={
+        <mesh position={[0, 1.5, 0]}>
+          <sphereGeometry args={[0.7, 12, 12]} />
+          <meshStandardMaterial color={placeholderColor} roughness={0.4} />
+        </mesh>
+      }>
+        <RoseInstance roseTypeId={roseTypeId} />
+      </Suspense>
       {/* Bright ring — "pending / drag to position" indicator */}
       <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0.6, 0]}>
         <ringGeometry args={[1.8, 2.3, 48]} />
@@ -365,20 +383,22 @@ export default function BouquetScene3D({
             scale={editingScale}
           />
         )}
-
-        {pendingRose && onPendingPositionChange && (
-          <PendingRose3D
-            roseTypeId={pendingRose.roseTypeId}
-            x3d={pendingRose.x3d}
-            y3d={pendingRose.y3d}
-            z3d={pendingRose.z3d}
-            scale={pendingScale}
-            onPositionChange={onPendingPositionChange}
-            onDragStart={() => setIsDraggingPending(true)}
-            onDragEnd={() => setIsDraggingPending(false)}
-          />
-        )}
       </Suspense>
+
+      {/* PendingRose OUTSIDE main Suspense — renders immediately when set.
+          Its own nested Suspense shows a colored sphere while the GLB loads. */}
+      {pendingRose && onPendingPositionChange && (
+        <PendingRose3D
+          roseTypeId={pendingRose.roseTypeId}
+          x3d={pendingRose.x3d}
+          y3d={pendingRose.y3d}
+          z3d={pendingRose.z3d}
+          scale={pendingScale}
+          onPositionChange={onPendingPositionChange}
+          onDragStart={() => setIsDraggingPending(true)}
+          onDragEnd={() => setIsDraggingPending(false)}
+        />
+      )}
 
       <OrbitControls
         target={orbitTarget}
