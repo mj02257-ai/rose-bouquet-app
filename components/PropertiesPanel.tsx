@@ -1,21 +1,6 @@
 'use client';
 
-import { BouquetRose, RoseType } from '@/types/bouquet';
-
-interface PropertiesPanelProps {
-  selectedRose: BouquetRose | null;
-  roseType: RoseType | null;
-  pendingRoseType: RoseType | null;
-  totalRoses: number;
-  message: string;
-  onMessageChange: (msg: string) => void;
-  onRotationChange: (rotation: number) => void;
-  onConfirmPlace: () => void;
-  onDelete: () => void;
-  onComplete: () => void;
-  isOpen: boolean;
-  onClose: () => void;
-}
+import { BouquetRose, RoseType, EditingRoseData } from '@/types/bouquet';
 
 const SUGGESTED_MESSAGES = [
   '어른이 된 오늘을 진심으로 축하해.',
@@ -23,15 +8,42 @@ const SUGGESTED_MESSAGES = [
   '새로운 시작을 진심으로 응원할게.',
 ];
 
+interface PropertiesPanelProps {
+  pendingRoseType: RoseType | null;
+  editingRose: EditingRoseData | null;
+  editingRoseType: RoseType | null;
+  selectedRose: BouquetRose | null;
+  roseType: RoseType | null;
+  totalRoses: number;
+  message: string;
+  onMessageChange: (msg: string) => void;
+  onConfirmPlace: () => void;
+  onCancelPending: () => void;
+  onFixRose: () => void;
+  onEditingRotationChange: (rotation: number) => void;
+  onDeleteEditing: () => void;
+  onRotationChange: (rotation: number) => void;
+  onDelete: () => void;
+  onComplete: () => void;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
 export default function PropertiesPanel({
+  pendingRoseType,
+  editingRose,
+  editingRoseType,
   selectedRose,
   roseType,
-  pendingRoseType,
   totalRoses,
   message,
   onMessageChange,
-  onRotationChange,
   onConfirmPlace,
+  onCancelPending,
+  onFixRose,
+  onEditingRotationChange,
+  onDeleteEditing,
+  onRotationChange,
   onDelete,
   onComplete,
   isOpen,
@@ -60,7 +72,7 @@ export default function PropertiesPanel({
         {/* ── Panel top ── */}
         <div className="px-4 pt-4 pb-3 flex-shrink-0 border-b border-black/[0.06] flex items-center justify-between">
           <span className="text-[11px] text-black/35 font-medium">
-            {totalRoses >= 9 ? `최대 9송이` : totalRoses > 0 ? `${totalRoses}송이 선택됨` : '꽃을 추가해보세요'}
+            {totalRoses >= 9 ? `최대 9송이` : totalRoses > 0 ? `${totalRoses}송이 고정됨` : '장미를 선택해보세요'}
           </span>
           <button
             className="lg:hidden text-black/30 hover:text-black/70 transition-colors"
@@ -75,7 +87,7 @@ export default function PropertiesPanel({
 
         <div className="flex-1 overflow-y-auto">
 
-          {/* ── Pending rose OR selected rose (mutually exclusive) ── */}
+          {/* ── State B: pendingRose — drag to position, then place ── */}
           {pendingRoseType ? (
             <div className="px-4 py-4 border-b border-black/[0.06] space-y-3">
               <div className="flex items-center gap-2">
@@ -84,8 +96,10 @@ export default function PropertiesPanel({
                   style={{ backgroundColor: pendingRoseType.color }}
                 />
                 <p className="text-[12px] text-black/70 font-medium">{pendingRoseType.name}</p>
-                <span className="ml-auto text-[10px] text-black/30">위치 조정 후 두기</span>
               </div>
+              <p className="text-[11px] text-black/35 leading-relaxed">
+                캔버스에서 장미를 드래그해 원하는 위치로 이동한 후 아래 버튼을 눌러주세요.
+              </p>
               <button
                 onClick={onConfirmPlace}
                 disabled={totalRoses >= 9}
@@ -97,8 +111,56 @@ export default function PropertiesPanel({
               >
                 {totalRoses < 9 ? '여기에 두기' : '최대 9송이'}
               </button>
+              <button
+                onClick={onCancelPending}
+                className="w-full py-1.5 text-[11px] text-black/35 hover:text-black/55 transition-colors"
+              >
+                선택 취소
+              </button>
             </div>
+
+          ) : editingRose && editingRoseType ? (
+            /* ── State C: editingRose — adjust rotation, then fix ── */
+            <div className="px-4 py-4 border-b border-black/[0.06] space-y-4">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full flex-shrink-0 border border-black/10"
+                  style={{ backgroundColor: editingRoseType.color }}
+                />
+                <p className="text-[12px] text-black/70 font-medium">{editingRoseType.name}</p>
+                <span className="ml-auto text-[10px] text-amber-600/70">배치 중</span>
+              </div>
+
+              {/* Rotation */}
+              <div>
+                <div className="flex justify-between mb-2">
+                  <label className="text-[11px] text-black/40">방향</label>
+                  <span className="text-[11px] text-black/30">{Math.round(editingRose.rotation)}°</span>
+                </div>
+                <input
+                  type="range" min={-180} max={180} step={1}
+                  value={editingRose.rotation}
+                  onChange={(e) => onEditingRotationChange(parseFloat(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+
+              <button
+                onClick={onFixRose}
+                className="w-full py-2.5 text-[12px] font-semibold rounded-sm bg-[#1A1816] text-white hover:bg-black transition-all"
+              >
+                고정하기
+              </button>
+              <button
+                onClick={onDeleteEditing}
+                className="w-full py-1.5 text-[11px] font-medium rounded-sm border border-rose-400/25 text-rose-500/70 hover:text-rose-600 hover:border-rose-400/50 hover:bg-rose-50 transition-all"
+              >
+                이 장미 제거
+              </button>
+            </div>
+
           ) : selectedRose && roseType ? (
+            /* ── State D: fixed rose selected — rotation + delete ── */
             <div className="px-4 py-4 border-b border-black/[0.06] space-y-4">
               <div className="flex items-center gap-2">
                 <div
@@ -106,28 +168,20 @@ export default function PropertiesPanel({
                   style={{ backgroundColor: roseType.color }}
                 />
                 <p className="text-[12px] text-black/70 font-medium">{roseType.name}</p>
+                <span className="ml-auto text-[10px] text-black/25">고정됨</span>
               </div>
-
-              {/* Rotation */}
               <div>
                 <div className="flex justify-between mb-2">
                   <label className="text-[11px] text-black/40">방향</label>
-                  <span className="text-[11px] text-black/30">
-                    {Math.round(selectedRose.rotation)}°
-                  </span>
+                  <span className="text-[11px] text-black/30">{Math.round(selectedRose.rotation)}°</span>
                 </div>
                 <input
-                  type="range"
-                  min={-180}
-                  max={180}
-                  step={1}
+                  type="range" min={-180} max={180} step={1}
                   value={selectedRose.rotation}
                   onChange={(e) => onRotationChange(parseFloat(e.target.value))}
                   className="w-full"
                 />
               </div>
-
-              {/* Delete */}
               <button
                 onClick={onDelete}
                 className="w-full py-1.5 text-[11px] font-medium rounded-sm border border-rose-400/25 text-rose-500/70 hover:text-rose-600 hover:border-rose-400/50 hover:bg-rose-50 transition-all"
@@ -135,12 +189,12 @@ export default function PropertiesPanel({
                 이 장미 제거
               </button>
             </div>
+
           ) : null}
 
           {/* ── Message card ── */}
           <div className="px-4 py-4 space-y-3">
             <p className="text-[11px] text-black/35 font-medium">메시지 카드</p>
-
             <div className="space-y-1">
               {SUGGESTED_MESSAGES.map((msg) => (
                 <button
@@ -152,7 +206,6 @@ export default function PropertiesPanel({
                 </button>
               ))}
             </div>
-
             <textarea
               value={message}
               onChange={(e) => onMessageChange(e.target.value)}

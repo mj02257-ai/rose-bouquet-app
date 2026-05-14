@@ -33,6 +33,15 @@ export type BouquetRose = {
   z3d?: number;
 };
 
+export type EditingRoseData = {
+  id: string;
+  roseTypeId: string;
+  x3d: number;
+  y3d: number;
+  z3d: number;
+  rotation: number;
+};
+
 export type BouquetData = {
   roses: BouquetRose[];
   wrapperId: string;

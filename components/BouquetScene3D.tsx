@@ -5,6 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { BouquetData, WrapperState } from '@/types/bouquet';
+import type { EditingRoseData } from '@/types/bouquet';
 
 // ── GLB paths ─────────────────────────────────────────────────────────────────
 const ROSE_GLB: Record<string, string> = {
@@ -154,6 +155,29 @@ function PendingRose3D({
   );
 }
 
+// ── Editing rose — snapped into wrapper, rotation adjustable ─────────────────
+function EditingRose3D({
+  roseTypeId, x3d, y3d, z3d, rotation, scale,
+}: {
+  roseTypeId: string; x3d: number; y3d: number; z3d: number; rotation: number; scale: number;
+}) {
+  const DEG = Math.PI / 180;
+  return (
+    <group
+      position={[x3d, y3d, z3d]}
+      scale={scale}
+      rotation={[-10 * DEG, rotation * DEG, 0]}
+    >
+      <RoseInstance roseTypeId={roseTypeId} />
+      {/* Gold ring — indicates "placed but not yet fixed" */}
+      <mesh position={[0, 0.4, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.2, 1.6, 40]} />
+        <meshBasicMaterial color="#C8A84B" opacity={0.55} transparent side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
 // ── Wrapper — single GLB, original materials ──────────────────────────────────
 interface WrapperModelProps {
   wrapperState: WrapperState;
@@ -260,6 +284,8 @@ export type PendingRoseData = {
   z3d: number;
 };
 
+export type { EditingRoseData };
+
 export interface BouquetScene3DProps {
   bouquetData: BouquetData;
   wrapperState: WrapperState;
@@ -270,12 +296,13 @@ export interface BouquetScene3DProps {
   onTyingComplete?: () => void;
   pendingRose?: PendingRoseData | null;
   onPendingPositionChange?: (x: number, z: number) => void;
+  editingRose?: EditingRoseData | null;
 }
 
 export default function BouquetScene3D({
   bouquetData, wrapperState, autoRotate,
   editMode, selectedId, onSelect, onTyingComplete,
-  pendingRose, onPendingPositionChange,
+  pendingRose, onPendingPositionChange, editingRose,
 }: BouquetScene3DProps) {
   const [isDraggingPending, setIsDraggingPending] = useState(false);
 
@@ -286,6 +313,7 @@ export default function BouquetScene3D({
 
   const total = bouquetData.roses.length;
   const pendingScale = (total + 1) <= 3 ? 0.354 : (total + 1) <= 6 ? 0.317 : 0.281;
+  const editingScale = (total + 1) <= 3 ? 0.354 : (total + 1) <= 6 ? 0.317 : 0.281;
 
   const controlsEnabled = editMode
     ? wrapperState !== 'tying'
@@ -321,6 +349,17 @@ export default function BouquetScene3D({
           editMode={editMode}
           onTyingComplete={onTyingComplete}
         />
+
+        {editingRose && (
+          <EditingRose3D
+            roseTypeId={editingRose.roseTypeId}
+            x3d={editingRose.x3d}
+            y3d={editingRose.y3d}
+            z3d={editingRose.z3d}
+            rotation={editingRose.rotation}
+            scale={editingScale}
+          />
+        )}
 
         {pendingRose && onPendingPositionChange && (
           <PendingRose3D

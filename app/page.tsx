@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { BouquetRose, BouquetData, RoseType, HistoryEntry, WrapperState } from '@/types/bouquet';
+import { useState, useCallback, useEffect } from 'react';
+import { BouquetRose, BouquetData, RoseType, HistoryEntry, WrapperState, EditingRoseData } from '@/types/bouquet';
 import { ROSES, WRAPPERS, DEFAULT_WRAPPER_ID } from '@/lib/roseData';
 import Header from '@/components/Header';
 import RoseLibrary from '@/components/RoseLibrary';
@@ -17,20 +17,24 @@ const generateId = () => `rose-${Date.now()}-${++idCounter}`;
 const MAX_HISTORY = 30;
 const MAX_ROSES   = 9;
 
+// Y positions in 3D scene
+const PENDING_Y  = -0.20;  // above wrapper opening — visible to user
+const PLACED_Y   = -0.45;  // inside wrapper — stem hidden, flower shows above
+
 export default function HomePage() {
-  const [roses, setRoses]             = useState<BouquetRose[]>([]);
-  const [selectedId, setSelectedId]   = useState<string | null>(null);
-  const [pendingRose, setPendingRose] = useState<PendingRoseData | null>(null);
-  const [message, setMessage]         = useState('');
-  const [wrapperId, setWrapperId]     = useState(DEFAULT_WRAPPER_ID);
+  const [roses, setRoses]               = useState<BouquetRose[]>([]);
+  const [selectedId, setSelectedId]     = useState<string | null>(null);
+  const [pendingRose, setPendingRose]   = useState<PendingRoseData | null>(null);
+  const [editingRose, setEditingRose]   = useState<EditingRoseData | null>(null);
+  const [message, setMessage]           = useState('');
+  const [wrapperId, setWrapperId]       = useState(DEFAULT_WRAPPER_ID);
   const [isPreviewMode, setIsPreviewMode]   = useState(false);
   const [isShowcaseMode, setIsShowcaseMode] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [history, setHistory]         = useState<HistoryEntry[]>([]);
+  const [history, setHistory]           = useState<HistoryEntry[]>([]);
   const [isLibraryOpen, setIsLibraryOpen]       = useState(false);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [editWrapperState, setEditWrapperState] = useState<WrapperState>('wrapped');
-  const pendingRoseIdRef = useRef<string | null>(null);
 
   const saveHistory = useCallback(
     (currentRoses: BouquetRose[], currentMessage: string) => {
@@ -42,61 +46,69 @@ export default function HomePage() {
     []
   );
 
-  const addRose = useCallback(
-    (roseType: RoseType, x3d?: number, y3d?: number, z3d?: number) => {
-      const newId = generateId();
-      setRoses((prev) => {
-        if (prev.length >= MAX_ROSES) return prev;
-        saveHistory(prev, message);
-        const maxZ = prev.length > 0 ? Math.max(...prev.map((r) => r.zIndex)) : 0;
-        const newRose: BouquetRose = {
-          id: newId,
-          roseTypeId: roseType.id,
-          x: 50,
-          y: 50,
-          scale: 1,
-          rotation: Math.random() * 30 - 15,
-          zIndex: maxZ + 1,
-          ...(x3d !== undefined && y3d !== undefined && z3d !== undefined
-            ? { x3d, y3d, z3d }
-            : {}),
-        };
-        pendingRoseIdRef.current = newId;
-        return [...prev, newRose];
-      });
-    },
-    [message, saveHistory]
-  );
-
-  // Auto-select the newly placed rose after state updates
-  useEffect(() => {
-    if (!pendingRoseIdRef.current) return;
-    const id = pendingRoseIdRef.current;
-    pendingRoseIdRef.current = null;
-    setSelectedId(id);
-    setIsPropertiesOpen(true);
-  }, [roses]);
-
-  // Select rose type from library — shows pending draggable rose in 3D canvas
+  // ── Stage 1: select from library → pendingRose spawns above bouquet ──────────
   const handleSelectRoseType = useCallback((rose: RoseType) => {
-    setPendingRose({ roseTypeId: rose.id, x3d: 0, y3d: -0.45, z3d: 0 });
+    setEditingRose(null);        // cancel any in-progress editing
     setSelectedId(null);
+    setPendingRose({ roseTypeId: rose.id, x3d: 0, y3d: PENDING_Y, z3d: 0 });
     setIsPropertiesOpen(true);
   }, []);
 
+  // Drag updates x/z only; y stays at PENDING_Y (drag plane level)
   const handlePendingPositionChange = useCallback((x: number, z: number) => {
     setPendingRose((prev) => prev ? { ...prev, x3d: x, z3d: z } : null);
   }, []);
 
-  // Confirm placement — inserts the pending rose at its current 3D position
+  // Cancel pending before placing
+  const handleCancelPending = useCallback(() => {
+    setPendingRose(null);
+    setIsPropertiesOpen(false);
+  }, []);
+
+  // ── Stage 2: "여기에 두기" → pendingRose becomes editingRose ─────────────────
   const handleConfirmPlace = useCallback(() => {
     if (!pendingRose || roses.length >= MAX_ROSES) return;
-    const roseType = ROSES.find((r) => r.id === pendingRose.roseTypeId);
-    if (!roseType) return;
-    addRose(roseType, pendingRose.x3d, pendingRose.y3d, pendingRose.z3d);
+    setEditingRose({
+      id: generateId(),
+      roseTypeId: pendingRose.roseTypeId,
+      x3d: pendingRose.x3d,
+      y3d: PLACED_Y,           // snap down into wrapper
+      z3d: pendingRose.z3d,
+      rotation: 0,
+    });
     setPendingRose(null);
-  }, [pendingRose, roses.length, addRose]);
+  }, [pendingRose, roses.length]);
 
+  const handleEditingRotationChange = useCallback((rotation: number) => {
+    setEditingRose((prev) => prev ? { ...prev, rotation } : null);
+  }, []);
+
+  const handleDeleteEditing = useCallback(() => {
+    setEditingRose(null);
+  }, []);
+
+  // ── Stage 3: "고정하기" → editingRose enters fixedRoses ──────────────────────
+  const handleFixRose = useCallback(() => {
+    if (!editingRose || roses.length >= MAX_ROSES) return;
+    saveHistory(roses, message);
+    const maxZ = roses.length > 0 ? Math.max(...roses.map((r) => r.zIndex)) : 0;
+    const newRose: BouquetRose = {
+      id: editingRose.id,
+      roseTypeId: editingRose.roseTypeId,
+      x: 50,
+      y: 50,
+      scale: 1,
+      rotation: editingRose.rotation,
+      zIndex: maxZ + 1,
+      x3d: editingRose.x3d,
+      y3d: editingRose.y3d,
+      z3d: editingRose.z3d,
+    };
+    setRoses((prev) => [...prev, newRose]);
+    setEditingRose(null);
+  }, [editingRose, roses, message, saveHistory]);
+
+  // ── Fixed-rose editing ────────────────────────────────────────────────────────
   const handleDragStart = useCallback((e: React.DragEvent, rose: RoseType) => {
     e.dataTransfer.setData('roseTypeId', rose.id);
   }, []);
@@ -114,17 +126,13 @@ export default function HomePage() {
   }, []);
 
   const handleSelect = useCallback((id: string | null) => {
+    if (id) {
+      setPendingRose(null);
+      setEditingRose(null);
+    }
     setSelectedId(id);
     if (id) setIsPropertiesOpen(true);
   }, []);
-
-  const handleScaleChange = useCallback(
-    (scale: number) => {
-      if (!selectedId) return;
-      setRoses((prev) => prev.map((r) => (r.id === selectedId ? { ...r, scale } : r)));
-    },
-    [selectedId]
-  );
 
   const handleRotationChange = useCallback(
     (rotation: number) => {
@@ -147,6 +155,8 @@ export default function HomePage() {
       setRoses(last.roses);
       setMessage(last.message);
       setSelectedId(null);
+      setPendingRose(null);
+      setEditingRose(null);
       return prev.slice(0, -1);
     });
   }, []);
@@ -155,6 +165,7 @@ export default function HomePage() {
     setRoses((prev) => { saveHistory(prev, message); return []; });
     setSelectedId(null);
     setPendingRose(null);
+    setEditingRose(null);
   }, [message, saveHistory]);
 
   const handleComplete = useCallback(() => {
@@ -172,14 +183,17 @@ export default function HomePage() {
     setEditWrapperState('wrapped');
   }, []);
 
-  const selectedRose      = roses.find((r) => r.id === selectedId) || null;
-  const selectedRoseType  = selectedRose ? ROSES.find((r) => r.id === selectedRose.roseTypeId) || null : null;
-  const pendingRoseType   = pendingRose ? ROSES.find((r) => r.id === pendingRose.roseTypeId) || null : null;
-  const selectedWrapper   = WRAPPERS.find((w) => w.id === wrapperId) ?? WRAPPERS[0];
+  // ── Derived values ────────────────────────────────────────────────────────────
+  const selectedRose     = roses.find((r) => r.id === selectedId) || null;
+  const selectedRoseType = selectedRose ? ROSES.find((r) => r.id === selectedRose.roseTypeId) || null : null;
+  const pendingRoseType  = pendingRose  ? ROSES.find((r) => r.id === pendingRose.roseTypeId)  || null : null;
+  const editingRoseType  = editingRose  ? ROSES.find((r) => r.id === editingRose.roseTypeId)  || null : null;
+  const selectedWrapper  = WRAPPERS.find((w) => w.id === wrapperId) ?? WRAPPERS[0];
   const bouquetData: BouquetData = { roses, wrapperId, message };
   const isTying    = editWrapperState === 'tying';
   const atMaxRoses = roses.length >= MAX_ROSES;
 
+  // ── Persistence ───────────────────────────────────────────────────────────────
   useEffect(() => {
     try { localStorage.setItem('rosery-bouquet', JSON.stringify({ roses, message, wrapperId })); } catch { /* ignore */ }
   }, [roses, message, wrapperId]);
@@ -269,6 +283,7 @@ export default function HomePage() {
                 isPreviewMode={isPreviewMode}
                 pendingRose={pendingRose}
                 onPendingPositionChange={handlePendingPositionChange}
+                editingRose={editingRose}
               />
 
               {isTying && (
@@ -277,8 +292,7 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* Empty state — single line, no secondary text */}
-              {roses.length === 0 && !isPreviewMode && !isTying && (
+              {roses.length === 0 && !pendingRose && !editingRose && !isPreviewMode && !isTying && (
                 <div
                   className="absolute inset-0 flex items-center justify-center pointer-events-none"
                   style={{ paddingBottom: '10%' }}
@@ -326,15 +340,15 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* "여기에 두기" — shown when a rose is pending placement */}
+                {/* Stage B — pendingRose controls */}
                 {pendingRoseType && !atMaxRoses && (
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 flex-1">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
                       <div
                         className="w-3.5 h-3.5 rounded-full border border-black/10 flex-shrink-0"
                         style={{ backgroundColor: pendingRoseType.color }}
                       />
-                      <span className="text-[11px] text-black/50">{pendingRoseType.name} 선택됨</span>
+                      <span className="text-[11px] text-black/50 truncate">{pendingRoseType.name} — 드래그 후 두기</span>
                     </div>
                     <button
                       onClick={handleConfirmPlace}
@@ -342,6 +356,39 @@ export default function HomePage() {
                     >
                       여기에 두기
                     </button>
+                  </div>
+                )}
+
+                {/* Stage C — editingRose controls */}
+                {editingRose && editingRoseType && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3.5 h-3.5 rounded-full border border-black/10 flex-shrink-0"
+                        style={{ backgroundColor: editingRoseType.color }}
+                      />
+                      <span className="text-[11px] text-black/50">{editingRoseType.name} — 방향 조정 후 고정</span>
+                    </div>
+                    <input
+                      type="range" min={-180} max={180} step={1}
+                      value={editingRose.rotation}
+                      onChange={(e) => handleEditingRotationChange(parseFloat(e.target.value))}
+                      className="w-full"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleFixRose}
+                        className="flex-1 py-2 rounded-sm bg-[#111110] text-white text-[11px] font-semibold hover:bg-black transition-colors"
+                      >
+                        고정하기
+                      </button>
+                      <button
+                        onClick={handleDeleteEditing}
+                        className="px-4 py-2 rounded-sm border border-rose-400/25 text-rose-500/70 text-[11px] font-medium hover:bg-rose-50 transition-all"
+                      >
+                        제거
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -376,14 +423,20 @@ export default function HomePage() {
           {/* Right panel */}
           {!isPreviewMode && (
             <PropertiesPanel
+              pendingRoseType={pendingRoseType}
+              editingRose={editingRose}
+              editingRoseType={editingRoseType}
               selectedRose={selectedRose}
               roseType={selectedRoseType}
-              pendingRoseType={pendingRoseType}
               totalRoses={roses.length}
               message={message}
               onMessageChange={setMessage}
-              onRotationChange={handleRotationChange}
               onConfirmPlace={handleConfirmPlace}
+              onCancelPending={handleCancelPending}
+              onFixRose={handleFixRose}
+              onEditingRotationChange={handleEditingRotationChange}
+              onDeleteEditing={handleDeleteEditing}
+              onRotationChange={handleRotationChange}
               onDelete={handleDelete}
               onComplete={handleComplete}
               isOpen={isPropertiesOpen}

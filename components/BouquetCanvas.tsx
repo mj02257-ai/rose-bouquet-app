@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { BouquetRose, BouquetData, WrapperStyle, WrapperState } from '@/types/bouquet';
-import type { PendingRoseData } from './BouquetScene3D';
+import type { PendingRoseData, EditingRoseData } from './BouquetScene3D';
 
 const BouquetScene3D = dynamic(() => import('./BouquetScene3D'), { ssr: false });
 
@@ -20,6 +20,7 @@ interface BouquetCanvasProps {
   isPreviewMode: boolean;
   pendingRose?: PendingRoseData | null;
   onPendingPositionChange?: (x: number, z: number) => void;
+  editingRose?: EditingRoseData | null;
 }
 
 export default function BouquetCanvas({
@@ -34,6 +35,7 @@ export default function BouquetCanvas({
   isPreviewMode,
   pendingRose,
   onPendingPositionChange,
+  editingRose,
 }: BouquetCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -79,6 +81,7 @@ export default function BouquetCanvas({
         onTyingComplete={onTyingComplete}
         pendingRose={pendingRose}
         onPendingPositionChange={onPendingPositionChange}
+        editingRose={editingRose}
       />
 
       {isDragOver && (
