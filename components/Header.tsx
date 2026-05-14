@@ -4,29 +4,20 @@ import Image from 'next/image';
 import { useState } from 'react';
 
 interface HeaderProps {
-  onUndo: () => void;
   onClearAll: () => void;
   onPreview: () => void;
   onSend: () => void;
   isPreviewMode: boolean;
-  canUndo: boolean;
   onOpenLibrary: () => void;
 }
 
 export default function Header({
-  onUndo,
-  onClearAll,
-  onPreview,
-  onSend,
-  isPreviewMode,
-  canUndo,
-  onOpenLibrary,
+  onClearAll, onPreview, onSend, isPreviewMode, onOpenLibrary,
 }: HeaderProps) {
   const [logoError, setLogoError] = useState(false);
 
   return (
     <header className="h-16 flex-shrink-0 flex items-center justify-between px-6 lg:px-8 border-b border-black/[0.07] bg-white z-20">
-      {/* ── Logo area ── */}
       <div className="flex items-center gap-4">
         <button
           className="lg:hidden text-black/35 hover:text-black/75 transition-colors mr-0.5"
@@ -52,9 +43,7 @@ export default function Header({
               priority
             />
           ) : (
-            <span className="text-[13px] font-semibold tracking-[0.14em] text-[#111110]">
-              ANDZ
-            </span>
+            <span className="text-[13px] font-semibold tracking-[0.14em] text-[#111110]">ANDZ</span>
           )}
           <div className="hidden md:block w-px h-4 bg-black/12" />
           <span className="hidden md:block text-[11px] text-black/28 font-light tracking-[0.06em]">
@@ -63,22 +52,14 @@ export default function Header({
         </div>
       </div>
 
-      {/* ── Action buttons ── */}
       <div className="flex items-center gap-1.5">
         {!isPreviewMode ? (
           <>
             <button
-              onClick={onUndo}
-              disabled={!canUndo}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium tracking-wide rounded-sm border border-black/[0.09] text-black/38 hover:text-black/65 hover:border-black/20 disabled:opacity-20 disabled:cursor-not-allowed transition-all duration-150"
-            >
-              ↩ 되돌리기
-            </button>
-            <button
               onClick={onClearAll}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium tracking-wide rounded-sm border border-black/[0.09] text-black/38 hover:text-rose-600/75 hover:border-rose-400/28 transition-all duration-150"
             >
-              전체 삭제
+              초기화
             </button>
             <button
               onClick={onPreview}
