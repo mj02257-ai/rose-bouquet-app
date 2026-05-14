@@ -1,35 +1,24 @@
 'use client';
 
-import { useState } from 'react';
-import { RoseType } from '@/types/bouquet';
-import { ROSES, CATEGORIES, CategoryFilter } from '@/lib/roseData';
-import RoseCard from './RoseCard';
+import type { RoseColor } from './BouquetScene3D';
+
+const ROSE_OPTIONS: { id: RoseColor; nameKo: string; color: string; meaning: string }[] = [
+  { id: 'red',   nameKo: '레드 로즈',   color: '#C0392B', meaning: '사랑' },
+  { id: 'pink',  nameKo: '핑크 로즈',   color: '#E91E63', meaning: '진심' },
+  { id: 'white', nameKo: '화이트 로즈', color: '#F0E8E0', meaning: '시작' },
+  { id: 'peach', nameKo: '피치 로즈',   color: '#FFAB91', meaning: '감사' },
+];
 
 interface RoseLibraryProps {
-  onAddRose: (rose: RoseType) => void;
-  onDragStart: (e: React.DragEvent, rose: RoseType) => void;
+  selectedColor: RoseColor | null;
+  onSelectColor: (color: RoseColor) => void;
   isOpen: boolean;
   onClose: () => void;
-  wrapperId: string;
-  onWrapperChange: (id: string) => void;
 }
 
-export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose }: RoseLibraryProps) {
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<CategoryFilter>('전체');
-
-  const filtered = ROSES.filter((r) => {
-    const matchCat = category === '전체' || r.category === category;
-    const matchSearch =
-      search === '' ||
-      r.name.toLowerCase().includes(search.toLowerCase()) ||
-      r.meaningKo.includes(search);
-    return matchCat && matchSearch;
-  });
-
+export default function RoseLibrary({ selectedColor, onSelectColor, isOpen, onClose }: RoseLibraryProps) {
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/30 z-30 lg:hidden backdrop-blur-sm"
@@ -48,10 +37,9 @@ export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose }:
           top-0 left-0 lg:top-auto lg:left-auto
         `}
       >
-        {/* ── Panel top ── */}
         <div className="px-4 pt-4 pb-3 flex-shrink-0 border-b border-black/[0.06]">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] text-black/35 font-medium">색을 골라보세요</p>
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-black/35 font-medium">장미 색상을 선택해주세요</p>
             <button
               className="lg:hidden text-black/30 hover:text-black/70 transition-colors"
               onClick={onClose}
@@ -62,61 +50,34 @@ export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose }:
               </svg>
             </button>
           </div>
+        </div>
 
-          {/* Search */}
-          <div className="relative">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-black/25"
-              width="13" height="13" viewBox="0 0 13 13" fill="none"
+        <div className="flex-1 overflow-y-auto py-3 px-3 space-y-1.5">
+          {ROSE_OPTIONS.map((rose) => (
+            <button
+              key={rose.id}
+              onClick={() => { onSelectColor(rose.id); onClose(); }}
+              className={`
+                w-full flex items-center gap-3 px-3 py-3.5 rounded-sm border transition-all duration-150
+                ${selectedColor === rose.id
+                  ? 'border-black/25 bg-black/[0.04]'
+                  : 'border-transparent hover:border-black/[0.08] hover:bg-black/[0.02]'
+                }
+              `}
             >
-              <circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" strokeWidth="1.2"/>
-              <path d="M9.5 9.5l2.5 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-            </svg>
-            <input
-              type="text"
-              placeholder="장미 검색"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-black/[0.03] border border-black/[0.08] rounded-sm pl-8 pr-3 py-2 text-[12px] text-black/70 placeholder-black/22 focus:outline-none focus:border-black/18 transition-colors"
-            />
-          </div>
-        </div>
-
-        {/* ── Category filter ── */}
-        <div className="px-4 py-2.5 flex-shrink-0 border-b border-black/[0.06]">
-          <div className="flex flex-wrap gap-1">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setCategory(cat)}
-                className={`
-                  px-2.5 py-1 text-[11px] font-medium rounded-sm transition-all duration-150
-                  ${category === cat
-                    ? 'bg-[#111110] text-white border border-[#111110]'
-                    : 'text-black/40 border border-transparent hover:text-black/65 hover:border-black/10 hover:bg-black/[0.03]'
-                  }
-                `}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Rose list ── */}
-        <div className="flex-1 overflow-y-auto py-2 px-3 space-y-1 min-h-0">
-          {filtered.length === 0 ? (
-            <p className="text-[11px] text-black/25 text-center py-10">검색 결과 없음</p>
-          ) : (
-            filtered.map((rose) => (
-              <RoseCard
-                key={rose.id}
-                rose={rose}
-                onAdd={onAddRose}
-                onDragStart={onDragStart}
+              <div
+                className="w-5 h-5 rounded-full flex-shrink-0 border border-black/10"
+                style={{ backgroundColor: rose.color }}
               />
-            ))
-          )}
+              <div className="text-left flex-1">
+                <p className="text-[12px] text-black/70 font-medium">{rose.nameKo}</p>
+                <p className="text-[10px] text-black/30">{rose.meaning}</p>
+              </div>
+              {selectedColor === rose.id && (
+                <div className="w-1.5 h-1.5 rounded-full bg-black/40 flex-shrink-0" />
+              )}
+            </button>
+          ))}
         </div>
       </aside>
     </>

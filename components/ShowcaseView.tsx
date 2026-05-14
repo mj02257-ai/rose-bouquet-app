@@ -2,26 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { BouquetData, WrapperStyle, WrapperState } from '@/types/bouquet';
+import type { RoseColor } from './BouquetScene3D';
+import type { WrapperState } from '@/types/bouquet';
 
 const BouquetScene3D = dynamic(() => import('./BouquetScene3D'), { ssr: false });
 
 interface ShowcaseViewProps {
-  bouquetData: BouquetData;
-  wrapper: WrapperStyle;
+  selectedRoseColor: RoseColor | null;
   wrapperState: WrapperState;
+  message?: string;
   onTyingComplete: () => void;
   onClose: () => void;
   onSend: () => void;
 }
 
 export default function ShowcaseView({
-  bouquetData,
-  wrapper,
-  wrapperState,
-  onTyingComplete,
-  onClose,
-  onSend,
+  selectedRoseColor, wrapperState, message, onTyingComplete, onClose, onSend,
 }: ShowcaseViewProps) {
   const [autoRotate, setAutoRotate] = useState(true);
   const [entered, setEntered]       = useState(false);
@@ -36,15 +32,13 @@ export default function ShowcaseView({
   return (
     <div
       className="fixed inset-0 bg-[#050505] z-50 flex flex-col"
-      style={{
-        animation: entered ? 'showcaseIn 0.55s cubic-bezier(0.16,1,0.3,1) both' : undefined,
-      }}
+      style={{ animation: entered ? 'showcaseIn 0.55s cubic-bezier(0.16,1,0.3,1) both' : undefined }}
     >
       <div className="flex-shrink-0 flex items-center justify-between px-5 h-14 border-b border-white/[0.06]">
         <div>
           <p className="text-[10px] text-white/22 tracking-[0.08em] uppercase font-light">완성된 꽃다발</p>
           <p className="text-[12px] text-white/58 font-medium mt-0.5 tracking-wide">
-            {bouquetData.roses.length}송이 · {wrapper.nameKo} 포장
+            한 송이 · 블랙 리본 포장
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -82,9 +76,9 @@ export default function ShowcaseView({
 
       <div className="flex-1 relative">
         <BouquetScene3D
-          bouquetData={bouquetData}
+          selectedRoseColor={selectedRoseColor}
           wrapperState={wrapperState}
-          autoRotate={autoRotate}
+          autoRotate={autoRotate && isDone}
           onTyingComplete={onTyingComplete}
         />
 
@@ -93,7 +87,6 @@ export default function ShowcaseView({
             리본을 묶는 중…
           </p>
         )}
-
         {isDone && (
           <p className="absolute bottom-5 w-full text-center text-[10px] text-white/14 select-none pointer-events-none tracking-widest">
             ← 드래그해서 돌려보세요 →
@@ -101,10 +94,10 @@ export default function ShowcaseView({
         )}
       </div>
 
-      {bouquetData.message && (
+      {message && (
         <div className="flex-shrink-0 px-6 py-3.5 border-t border-white/[0.06] text-center">
           <p className="text-[12px] text-white/35 italic leading-relaxed">
-            &ldquo;{bouquetData.message}&rdquo;
+            &ldquo;{message}&rdquo;
           </p>
         </div>
       )}
