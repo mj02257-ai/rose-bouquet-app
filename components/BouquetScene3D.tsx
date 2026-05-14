@@ -18,7 +18,7 @@ const ROSE_GLB: Record<RoseColor, string> = {
 const WRAPPER_GLB = '/assets/3d/wrappers/wrapper_ribbon_tied_base.glb';
 
 const ROSE_SCALE = 0.62;
-const ROSE_Y     = -0.64;
+const ROSE_Y     = -0.56;
 const ROSE_Z     = 0.02;
 const ROSE_TILT  = -5 * (Math.PI / 180);
 
