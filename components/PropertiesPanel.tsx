@@ -9,7 +9,6 @@ interface PropertiesPanelProps {
   totalRoses: number;
   message: string;
   onMessageChange: (msg: string) => void;
-  onScaleChange: (scale: number) => void;
   onRotationChange: (rotation: number) => void;
   onConfirmPlace: () => void;
   onDelete: () => void;
@@ -31,7 +30,6 @@ export default function PropertiesPanel({
   totalRoses,
   message,
   onMessageChange,
-  onScaleChange,
   onRotationChange,
   onConfirmPlace,
   onDelete,
@@ -111,25 +109,6 @@ export default function PropertiesPanel({
                   style={{ backgroundColor: roseType.color }}
                 />
                 <p className="text-[12px] text-black/70 font-medium">{roseType.name}</p>
-              </div>
-
-              {/* Size */}
-              <div>
-                <div className="flex justify-between mb-2">
-                  <label className="text-[11px] text-black/40">크기</label>
-                  <span className="text-[11px] text-black/30">
-                    {Math.round(selectedRose.scale * 100)}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={0.3}
-                  max={2}
-                  step={0.05}
-                  value={selectedRose.scale}
-                  onChange={(e) => onScaleChange(parseFloat(e.target.value))}
-                  className="w-full"
-                />
               </div>
 
               {/* Rotation */}

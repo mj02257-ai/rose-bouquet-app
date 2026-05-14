@@ -369,7 +369,6 @@ export default function HomePage() {
               totalRoses={roses.length}
               message={message}
               onMessageChange={setMessage}
-              onScaleChange={handleScaleChange}
               onRotationChange={handleRotationChange}
               onConfirmPlace={handleConfirmPlace}
               onDelete={handleDelete}

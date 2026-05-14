@@ -34,16 +34,18 @@ function cloneScene(scene: THREE.Group): THREE.Group {
 // ── Bouquet slot table ─────────────────────────────────────────────────────────
 // Each entry: [x, y, z, tiltX°, tiltZ°]
 // Y values lowered so stems sit inside the wrapper opening (not floating above).
+// Y values lowered an additional -0.22 so stems sit inside the wrapper.
+// baseScaleMult also raised ×1.22 so roses read as full-size against the wrapper.
 const SLOTS: ReadonlyArray<[number, number, number, number, number]> = [
-  [  0.00, -0.07,  0.00,   -8,    0 ], // 0 center
-  [ -0.20, -0.12,  0.10,  -13,  +13 ], // 1 left-front
-  [  0.20, -0.12,  0.10,  -13,  -13 ], // 2 right-front
-  [  0.00,  0.05, -0.10,   -5,    0 ], // 3 back-center
-  [ -0.18,  0.01, -0.07,   -7,   +9 ], // 4 left-back
-  [  0.18,  0.01, -0.07,   -7,   -9 ], // 5 right-back
-  [ -0.34, -0.07,  0.02,  -10,  +20 ], // 6 far-left
-  [  0.34, -0.07,  0.02,  -10,  -20 ], // 7 far-right
-  [  0.00, -0.20,  0.18,  -16,    0 ], // 8 front-bottom
+  [  0.00, -0.29,  0.00,   -8,    0 ], // 0 center
+  [ -0.20, -0.34,  0.10,  -13,  +13 ], // 1 left-front
+  [  0.20, -0.34,  0.10,  -13,  -13 ], // 2 right-front
+  [  0.00, -0.17, -0.10,   -5,    0 ], // 3 back-center
+  [ -0.18, -0.21, -0.07,   -7,   +9 ], // 4 left-back
+  [  0.18, -0.21, -0.07,   -7,   -9 ], // 5 right-back
+  [ -0.34, -0.29,  0.02,  -10,  +20 ], // 6 far-left
+  [  0.34, -0.29,  0.02,  -10,  -20 ], // 7 far-right
+  [  0.00, -0.42,  0.18,  -16,    0 ], // 8 front-bottom
 ];
 
 function getSlotOrder(total: number): number[] {
@@ -110,7 +112,7 @@ function BouquetGroup({
   const roses = bouquetData.roses;
   const total = roses.length;
 
-  const baseScaleMult = total <= 3 ? 0.29 : total <= 6 ? 0.26 : 0.23;
+  const baseScaleMult = total <= 3 ? 0.354 : total <= 6 ? 0.317 : 0.281;
   const slotOrder = getSlotOrder(Math.min(total, 9));
   const DEG = Math.PI / 180;
 
