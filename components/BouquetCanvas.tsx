@@ -3,6 +3,7 @@
 import { useRef, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { BouquetRose, BouquetData, WrapperStyle, WrapperState } from '@/types/bouquet';
+import type { PendingRoseData } from './BouquetScene3D';
 
 const BouquetScene3D = dynamic(() => import('./BouquetScene3D'), { ssr: false });
 
@@ -17,6 +18,8 @@ interface BouquetCanvasProps {
   onDrop: (roseTypeId: string, x: number, y: number) => void;
   onTyingComplete: () => void;
   isPreviewMode: boolean;
+  pendingRose?: PendingRoseData | null;
+  onPendingPositionChange?: (x: number, z: number) => void;
 }
 
 export default function BouquetCanvas({
@@ -29,6 +32,8 @@ export default function BouquetCanvas({
   onDrop,
   onTyingComplete,
   isPreviewMode,
+  pendingRose,
+  onPendingPositionChange,
 }: BouquetCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -54,7 +59,6 @@ export default function BouquetCanvas({
   }, [getRelativePos, onDrop]);
 
   const bouquetData: BouquetData = { roses, wrapperId: wrapper.id, message };
-  const isTying = wrapperState === 'tying';
 
   return (
     <div
@@ -73,30 +77,12 @@ export default function BouquetCanvas({
         selectedId={selectedId}
         onSelect={!isPreviewMode ? onSelect : undefined}
         onTyingComplete={onTyingComplete}
+        pendingRose={pendingRose}
+        onPendingPositionChange={onPendingPositionChange}
       />
 
       {isDragOver && (
-        <div className="absolute inset-0 border border-dashed border-white/20 pointer-events-none z-10" />
-      )}
-
-      {isTying && (
-        <div className="absolute inset-0 pointer-events-auto z-20 flex items-end justify-center pb-6">
-          <p className="text-[10px] text-white/22 tracking-widest select-none">리본을 묶는 중…</p>
-        </div>
-      )}
-
-      {roses.length === 0 && !isPreviewMode && !isTying && (
-        <div
-          className="absolute inset-0 flex flex-col items-center gap-2 pointer-events-none"
-          style={{ justifyContent: 'center', paddingBottom: '12%' }}
-        >
-          <p className="text-[13px] text-white/22 font-light tracking-wide px-6 text-center">
-            어른이 된 오늘, 한 송이의 마음을 전해보세요.
-          </p>
-          <p className="text-[10px] text-white/10 tracking-widest uppercase">
-            drag &amp; drop
-          </p>
-        </div>
+        <div className="absolute inset-0 border border-dashed border-black/10 pointer-events-none z-10" />
       )}
     </div>
   );

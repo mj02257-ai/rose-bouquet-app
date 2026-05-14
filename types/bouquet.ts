@@ -27,6 +27,10 @@ export type BouquetRose = {
   scale: number;
   rotation: number;
   zIndex: number;
+  // Explicit 3D position when placed via free-placement UX
+  x3d?: number;
+  y3d?: number;
+  z3d?: number;
 };
 
 export type BouquetData = {

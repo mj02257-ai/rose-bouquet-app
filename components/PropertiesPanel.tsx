@@ -75,8 +75,8 @@ export default function PropertiesPanel({
 
         <div className="flex-1 overflow-y-auto">
 
-          {/* ── Pending rose — confirm placement ── */}
-          {pendingRoseType && (
+          {/* ── Pending rose OR selected rose (mutually exclusive) ── */}
+          {pendingRoseType ? (
             <div className="px-4 py-4 border-b border-black/[0.06] space-y-3">
               <div className="flex items-center gap-2">
                 <div
@@ -84,7 +84,7 @@ export default function PropertiesPanel({
                   style={{ backgroundColor: pendingRoseType.color }}
                 />
                 <p className="text-[12px] text-black/70 font-medium">{pendingRoseType.name}</p>
-                <span className="ml-auto text-[10px] text-black/30">선택됨</span>
+                <span className="ml-auto text-[10px] text-black/30">위치 조정 후 두기</span>
               </div>
               <button
                 onClick={onConfirmPlace}
@@ -98,10 +98,7 @@ export default function PropertiesPanel({
                 {totalRoses < 9 ? '여기에 두기' : '최대 9송이'}
               </button>
             </div>
-          )}
-
-          {/* ── Selected rose edit controls ── */}
-          {selectedRose && roseType && (
+          ) : selectedRose && roseType ? (
             <div className="px-4 py-4 border-b border-black/[0.06] space-y-4">
               <div className="flex items-center gap-2">
                 <div
@@ -138,7 +135,7 @@ export default function PropertiesPanel({
                 이 장미 제거
               </button>
             </div>
-          )}
+          ) : null}
 
           {/* ── Message card ── */}
           <div className="px-4 py-4 space-y-3">

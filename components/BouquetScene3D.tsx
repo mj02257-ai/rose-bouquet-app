@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useRef, useMemo, useEffect } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Suspense, useRef, useMemo, useEffect, useState } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { BouquetData, WrapperState } from '@/types/bouquet';
@@ -13,10 +13,9 @@ const ROSE_GLB: Record<string, string> = {
   white: '/assets/3d/roses/rose-white.glb',
   peach: '/assets/3d/roses/rose-peach.glb',
 };
-// Single wrapper — the final black bouquet wrapper, used from the start
 const WRAPPER_RIBBON_GLB = '/assets/3d/wrappers/wrapper_ribbon_tied_base.glb';
 
-// ── Clone GLTF scene preserving original materials ────────────────────────────
+// ── Clone scene preserving original GLB materials ─────────────────────────────
 function cloneScene(scene: THREE.Group): THREE.Group {
   const clone = scene.clone(true);
   clone.traverse((node) => {
@@ -31,21 +30,17 @@ function cloneScene(scene: THREE.Group): THREE.Group {
   return clone;
 }
 
-// ── Bouquet slot table ─────────────────────────────────────────────────────────
-// Each entry: [x, y, z, tiltX°, tiltZ°]
-// Y values lowered so stems sit inside the wrapper opening (not floating above).
-// Y values lowered an additional -0.22 so stems sit inside the wrapper.
-// baseScaleMult also raised ×1.22 so roses read as full-size against the wrapper.
+// ── Slot fallback — used only for roses loaded from localStorage without x3d ──
 const SLOTS: ReadonlyArray<[number, number, number, number, number]> = [
-  [  0.00, -0.29,  0.00,   -8,    0 ], // 0 center
-  [ -0.20, -0.34,  0.10,  -13,  +13 ], // 1 left-front
-  [  0.20, -0.34,  0.10,  -13,  -13 ], // 2 right-front
-  [  0.00, -0.17, -0.10,   -5,    0 ], // 3 back-center
-  [ -0.18, -0.21, -0.07,   -7,   +9 ], // 4 left-back
-  [  0.18, -0.21, -0.07,   -7,   -9 ], // 5 right-back
-  [ -0.34, -0.29,  0.02,  -10,  +20 ], // 6 far-left
-  [  0.34, -0.29,  0.02,  -10,  -20 ], // 7 far-right
-  [  0.00, -0.42,  0.18,  -16,    0 ], // 8 front-bottom
+  [  0.00, -0.29,  0.00,  -10,    0 ],
+  [ -0.18, -0.29,  0.08,  -10,   +8 ],
+  [  0.18, -0.29,  0.08,  -10,   -8 ],
+  [  0.00, -0.29, -0.12,  -10,    0 ],
+  [ -0.22, -0.29, -0.06,  -10,  +10 ],
+  [  0.22, -0.29, -0.06,  -10,  -10 ],
+  [ -0.32, -0.29,  0.02,  -10,  +16 ],
+  [  0.32, -0.29,  0.02,  -10,  -16 ],
+  [  0.00, -0.29,  0.16,  -10,    0 ],
 ];
 
 function getSlotOrder(total: number): number[] {
@@ -62,7 +57,7 @@ function getSlotOrder(total: number): number[] {
   }
 }
 
-// ── Single rose — Meshy texture, no material override ─────────────────────────
+// ── Rose mesh ─────────────────────────────────────────────────────────────────
 function RoseInstance({ roseTypeId }: { roseTypeId: string }) {
   const glbPath = ROSE_GLB[roseTypeId] ?? ROSE_GLB.red;
   const { scene } = useGLTF(glbPath);
@@ -70,7 +65,93 @@ function RoseInstance({ roseTypeId }: { roseTypeId: string }) {
   return <primitive object={cloned} />;
 }
 
-// ── Wrapper — single GLB, always visible, original materials ──────────────────
+// ── Pending rose — draggable in 3D on a horizontal plane ─────────────────────
+interface PendingRose3DProps {
+  roseTypeId: string;
+  x3d: number;
+  y3d: number;
+  z3d: number;
+  scale: number;
+  onPositionChange: (x: number, z: number) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}
+
+function PendingRose3D({
+  roseTypeId, x3d, y3d, z3d, scale,
+  onPositionChange, onDragStart, onDragEnd,
+}: PendingRose3DProps) {
+  const { gl, camera } = useThree();
+  const dragging = useRef(false);
+  // Horizontal plane at rose Y level — pointer drags along this plane
+  const plane = useMemo(
+    () => new THREE.Plane(new THREE.Vector3(0, 1, 0), -y3d),
+    [y3d],
+  );
+
+  // Stable callback refs so the effect closure never goes stale
+  const posChangeCb = useRef(onPositionChange);
+  posChangeCb.current = onPositionChange;
+  const dragEndCb = useRef(onDragEnd);
+  dragEndCb.current = onDragEnd;
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+
+    const onMove = (e: PointerEvent) => {
+      if (!dragging.current) return;
+      const rect = canvas.getBoundingClientRect();
+      const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      const rc = new THREE.Raycaster();
+      rc.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
+      const hit = new THREE.Vector3();
+      if (rc.ray.intersectPlane(plane, hit)) {
+        posChangeCb.current(
+          Math.max(-0.55, Math.min(0.55, hit.x)),
+          Math.max(-0.42, Math.min(0.42, hit.z)),
+        );
+      }
+    };
+
+    const onUp = (e: PointerEvent) => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      try { canvas.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+      dragEndCb.current();
+    };
+
+    canvas.addEventListener('pointermove', onMove);
+    canvas.addEventListener('pointerup', onUp);
+    return () => {
+      canvas.removeEventListener('pointermove', onMove);
+      canvas.removeEventListener('pointerup', onUp);
+    };
+  }, [gl, camera, plane]);
+
+  return (
+    <group
+      position={[x3d, y3d, z3d]}
+      scale={scale}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onPointerDown={(e: any) => {
+        e.stopPropagation();
+        dragging.current = true;
+        try { gl.domElement.setPointerCapture(e.nativeEvent.pointerId); } catch { /* ignore */ }
+        onDragStart();
+      }}
+    >
+      <RoseInstance roseTypeId={roseTypeId} />
+      {/* Dashed selection ring indicating "pending / not yet placed" */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0.5, 0]}>
+        <ringGeometry args={[1.6, 2.0, 40]} />
+        <meshBasicMaterial color="#888888" opacity={0.28} transparent side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
+// ── Wrapper — single GLB, original materials ──────────────────────────────────
 interface WrapperModelProps {
   wrapperState: WrapperState;
   onTyingComplete?: () => void;
@@ -88,15 +169,11 @@ function WrapperModel({ wrapperState, onTyingComplete }: WrapperModelProps) {
   const cloned = useMemo(() => cloneScene(scene as unknown as THREE.Group), [scene]);
 
   return (
-    <primitive
-      object={cloned}
-      position={[0, -0.68, 0]}
-      scale={[0.78, 0.78, 0.78]}
-    />
+    <primitive object={cloned} position={[0, -0.68, 0]} scale={[0.78, 0.78, 0.78]} />
   );
 }
 
-// ── Main bouquet group ────────────────────────────────────────────────────────
+// ── Bouquet group — confirmed roses ──────────────────────────────────────────
 interface BouquetGroupProps {
   bouquetData: BouquetData;
   wrapperState: WrapperState;
@@ -111,36 +188,46 @@ function BouquetGroup({
 }: BouquetGroupProps) {
   const roses = bouquetData.roses;
   const total = roses.length;
-
   const baseScaleMult = total <= 3 ? 0.354 : total <= 6 ? 0.317 : 0.281;
   const slotOrder = getSlotOrder(Math.min(total, 9));
   const DEG = Math.PI / 180;
+  const FIXED_TILT_X = -10 * DEG;
 
   return (
     <group>
       <WrapperModel wrapperState={wrapperState} onTyingComplete={onTyingComplete} />
 
       {roses.map((rose, idx) => {
-        const slotIdx = slotOrder[idx] ?? slotOrder[slotOrder.length - 1];
-        const [sx, sy, sz, tiltX, tiltZ] = SLOTS[slotIdx];
+        let sx: number, sy: number, sz: number, rotX: number, rotZ: number;
+        if (rose.x3d !== undefined && rose.y3d !== undefined && rose.z3d !== undefined) {
+          // Free-placed rose — use stored 3D position
+          sx = rose.x3d; sy = rose.y3d; sz = rose.z3d;
+          rotX = FIXED_TILT_X; rotZ = 0;
+        } else {
+          // Legacy slot-based fallback (roses loaded from old localStorage saves)
+          const slotIdx = slotOrder[idx] ?? slotOrder[slotOrder.length - 1];
+          const [slotX, slotY, slotZ, tiltXd, tiltZd] = SLOTS[slotIdx];
+          sx = slotX; sy = slotY; sz = slotZ;
+          rotX = tiltXd * DEG; rotZ = tiltZd * DEG;
+        }
+
         const isSelected = !!(editMode && selectedId === rose.id);
 
         return (
           <group
             key={rose.id}
             position={[sx, sy, sz]}
-            scale={rose.scale * baseScaleMult}
-            rotation={[tiltX * DEG, rose.rotation * DEG, tiltZ * DEG]}
+            scale={baseScaleMult}
+            rotation={[rotX, rose.rotation * DEG, rotZ]}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             onClick={editMode ? (e: any) => { e.stopPropagation(); onSelect?.(rose.id); } : undefined}
           >
             <RoseInstance roseTypeId={rose.roseTypeId} />
 
-            {/* Subtle selection indicator — thin bright ring above rose base */}
             {isSelected && (
               <mesh position={[0, 0.4, 0]} rotation={[Math.PI / 2, 0, 0]}>
-                <ringGeometry args={[1.2, 1.45, 40]} />
-                <meshBasicMaterial color="#FFFFFF" opacity={0.55} transparent side={THREE.DoubleSide} />
+                <ringGeometry args={[1.2, 1.5, 40]} />
+                <meshBasicMaterial color="#FFFFFF" opacity={0.50} transparent side={THREE.DoubleSide} />
               </mesh>
             )}
           </group>
@@ -162,7 +249,14 @@ function LoadingMesh() {
   );
 }
 
-// ── Public component ──────────────────────────────────────────────────────────
+// ── Props & exports ───────────────────────────────────────────────────────────
+export type PendingRoseData = {
+  roseTypeId: string;
+  x3d: number;
+  y3d: number;
+  z3d: number;
+};
+
 export interface BouquetScene3DProps {
   bouquetData: BouquetData;
   wrapperState: WrapperState;
@@ -171,16 +265,24 @@ export interface BouquetScene3DProps {
   selectedId?: string | null;
   onSelect?: (id: string | null) => void;
   onTyingComplete?: () => void;
+  pendingRose?: PendingRoseData | null;
+  onPendingPositionChange?: (x: number, z: number) => void;
 }
 
 export default function BouquetScene3D({
   bouquetData, wrapperState, autoRotate,
   editMode, selectedId, onSelect, onTyingComplete,
+  pendingRose, onPendingPositionChange,
 }: BouquetScene3DProps) {
+  const [isDraggingPending, setIsDraggingPending] = useState(false);
+
   useEffect(() => {
     Object.values(ROSE_GLB).forEach((p) => useGLTF.preload(p));
     useGLTF.preload(WRAPPER_RIBBON_GLB);
   }, []);
+
+  const total = bouquetData.roses.length;
+  const pendingScale = (total + 1) <= 3 ? 0.354 : (total + 1) <= 6 ? 0.317 : 0.281;
 
   const controlsEnabled = editMode
     ? wrapperState !== 'tying'
@@ -216,6 +318,19 @@ export default function BouquetScene3D({
           editMode={editMode}
           onTyingComplete={onTyingComplete}
         />
+
+        {pendingRose && onPendingPositionChange && (
+          <PendingRose3D
+            roseTypeId={pendingRose.roseTypeId}
+            x3d={pendingRose.x3d}
+            y3d={pendingRose.y3d}
+            z3d={pendingRose.z3d}
+            scale={pendingScale}
+            onPositionChange={onPendingPositionChange}
+            onDragStart={() => setIsDraggingPending(true)}
+            onDragEnd={() => setIsDraggingPending(false)}
+          />
+        )}
       </Suspense>
 
       <OrbitControls
@@ -226,7 +341,7 @@ export default function BouquetScene3D({
         autoRotateSpeed={1.4}
         minPolarAngle={Math.PI / 6}
         maxPolarAngle={Math.PI * 0.70}
-        enabled={controlsEnabled}
+        enabled={controlsEnabled && !isDraggingPending}
       />
     </Canvas>
   );

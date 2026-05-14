@@ -9,6 +9,7 @@ import BouquetCanvas from '@/components/BouquetCanvas';
 import PropertiesPanel from '@/components/PropertiesPanel';
 import ShareModal from '@/components/ShareModal';
 import ShowcaseView from '@/components/ShowcaseView';
+import type { PendingRoseData } from '@/components/BouquetScene3D';
 
 let idCounter = 0;
 const generateId = () => `rose-${Date.now()}-${++idCounter}`;
@@ -19,7 +20,7 @@ const MAX_ROSES   = 9;
 export default function HomePage() {
   const [roses, setRoses]             = useState<BouquetRose[]>([]);
   const [selectedId, setSelectedId]   = useState<string | null>(null);
-  const [pendingRoseType, setPendingRoseType] = useState<RoseType | null>(null);
+  const [pendingRose, setPendingRose] = useState<PendingRoseData | null>(null);
   const [message, setMessage]         = useState('');
   const [wrapperId, setWrapperId]     = useState(DEFAULT_WRAPPER_ID);
   const [isPreviewMode, setIsPreviewMode]   = useState(false);
@@ -42,7 +43,7 @@ export default function HomePage() {
   );
 
   const addRose = useCallback(
-    (roseType: RoseType) => {
+    (roseType: RoseType, x3d?: number, y3d?: number, z3d?: number) => {
       const newId = generateId();
       setRoses((prev) => {
         if (prev.length >= MAX_ROSES) return prev;
@@ -56,6 +57,9 @@ export default function HomePage() {
           scale: 1,
           rotation: Math.random() * 30 - 15,
           zIndex: maxZ + 1,
+          ...(x3d !== undefined && y3d !== undefined && z3d !== undefined
+            ? { x3d, y3d, z3d }
+            : {}),
         };
         pendingRoseIdRef.current = newId;
         return [...prev, newRose];
@@ -73,30 +77,36 @@ export default function HomePage() {
     setIsPropertiesOpen(true);
   }, [roses]);
 
-  // Select rose type from library — preview only, not placed yet
+  // Select rose type from library — shows pending draggable rose in 3D canvas
   const handleSelectRoseType = useCallback((rose: RoseType) => {
-    setPendingRoseType(rose);
+    setPendingRose({ roseTypeId: rose.id, x3d: 0, y3d: -0.29, z3d: 0 });
+    setSelectedId(null);
     setIsPropertiesOpen(true);
   }, []);
 
-  // Confirm placement — actually inserts the pending rose into the bouquet
+  const handlePendingPositionChange = useCallback((x: number, z: number) => {
+    setPendingRose((prev) => prev ? { ...prev, x3d: x, z3d: z } : null);
+  }, []);
+
+  // Confirm placement — inserts the pending rose at its current 3D position
   const handleConfirmPlace = useCallback(() => {
-    if (!pendingRoseType || roses.length >= MAX_ROSES) return;
-    addRose(pendingRoseType);
-    setPendingRoseType(null);
-  }, [pendingRoseType, roses.length, addRose]);
+    if (!pendingRose || roses.length >= MAX_ROSES) return;
+    const roseType = ROSES.find((r) => r.id === pendingRose.roseTypeId);
+    if (!roseType) return;
+    addRose(roseType, pendingRose.x3d, pendingRose.y3d, pendingRose.z3d);
+    setPendingRose(null);
+  }, [pendingRose, roses.length, addRose]);
 
   const handleDragStart = useCallback((e: React.DragEvent, rose: RoseType) => {
     e.dataTransfer.setData('roseTypeId', rose.id);
   }, []);
 
-  // Drag-and-drop onto canvas is a direct, intentional placement
   const handleDrop = useCallback(
     (roseTypeId: string, _x: number, _y: number) => {
       const roseType = ROSES.find((r) => r.id === roseTypeId);
-      if (roseType) addRose(roseType);
+      if (roseType) handleSelectRoseType(roseType);
     },
-    [addRose]
+    [handleSelectRoseType]
   );
 
   const handleMove = useCallback((id: string, x: number, y: number) => {
@@ -144,7 +154,7 @@ export default function HomePage() {
   const handleClearAll = useCallback(() => {
     setRoses((prev) => { saveHistory(prev, message); return []; });
     setSelectedId(null);
-    setPendingRoseType(null);
+    setPendingRose(null);
   }, [message, saveHistory]);
 
   const handleComplete = useCallback(() => {
@@ -162,9 +172,10 @@ export default function HomePage() {
     setEditWrapperState('wrapped');
   }, []);
 
-  const selectedRose     = roses.find((r) => r.id === selectedId) || null;
-  const selectedRoseType = selectedRose ? ROSES.find((r) => r.id === selectedRose.roseTypeId) || null : null;
-  const selectedWrapper  = WRAPPERS.find((w) => w.id === wrapperId) ?? WRAPPERS[0];
+  const selectedRose      = roses.find((r) => r.id === selectedId) || null;
+  const selectedRoseType  = selectedRose ? ROSES.find((r) => r.id === selectedRose.roseTypeId) || null : null;
+  const pendingRoseType   = pendingRose ? ROSES.find((r) => r.id === pendingRose.roseTypeId) || null : null;
+  const selectedWrapper   = WRAPPERS.find((w) => w.id === wrapperId) ?? WRAPPERS[0];
   const bouquetData: BouquetData = { roses, wrapperId, message };
   const isTying    = editWrapperState === 'tying';
   const atMaxRoses = roses.length >= MAX_ROSES;
@@ -256,6 +267,8 @@ export default function HomePage() {
                 onDrop={handleDrop}
                 onTyingComplete={handleTyingComplete}
                 isPreviewMode={isPreviewMode}
+                pendingRose={pendingRose}
+                onPendingPositionChange={handlePendingPositionChange}
               />
 
               {isTying && (
@@ -296,7 +309,7 @@ export default function HomePage() {
                         onClick={() => handleSelectRoseType(rose)}
                         disabled={atMaxRoses}
                         className={`flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-sm border transition-all
-                          ${pendingRoseType?.id === rose.id
+                          ${pendingRose?.roseTypeId === rose.id
                             ? 'border-black/30 bg-black/[0.05]'
                             : atMaxRoses
                               ? 'border-black/[0.05] opacity-40 cursor-not-allowed'
@@ -313,7 +326,7 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* "여기에 두기" — shown when a rose type is pending */}
+                {/* "여기에 두기" — shown when a rose is pending placement */}
                 {pendingRoseType && !atMaxRoses && (
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 flex-1">
