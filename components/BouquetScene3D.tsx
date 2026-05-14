@@ -22,11 +22,8 @@ const ROSE_Y     = -0.40;
 const ROSE_Z     = 0.06;
 const ROSE_TILT  = -3 * (Math.PI / 180);
 
-// 5-sided box clip (open top): keeps stem/leaf inside wrapper volume.
-// Bottom  y > -0.75  (cuts below ribbon area, well inside wrapper)
-// ±X      |x| < 0.42 (matches wrapper opening width ≈ ±0.35, with margin for bloom)
-// ±Z      |z| < 0.42
-const ROSE_CLIP_PLANES = [
+// 5-sided box clip for stem/leaf only (open top so bloom is never clipped).
+const STEM_LEAF_CLIP: THREE.Plane[] = [
   new THREE.Plane(new THREE.Vector3( 0,  1,  0),  0.75), // clip y < -0.75
   new THREE.Plane(new THREE.Vector3(-1,  0,  0),  0.42), // clip x >  0.42
   new THREE.Plane(new THREE.Vector3( 1,  0,  0),  0.42), // clip x < -0.42
@@ -34,12 +31,42 @@ const ROSE_CLIP_PLANES = [
   new THREE.Plane(new THREE.Vector3( 0,  0,  1),  0.42), // clip z < -0.42
 ];
 
-function applyClipPlanes(scene: THREE.Group, planes: THREE.Plane[]) {
+const FLOWER_KEYWORDS = ['rose', 'petal', 'bloom', 'flower', 'head', 'bud', 'sepal'];
+const STEM_LEAF_KEYWORDS = ['leaf', 'leaves', 'stem', 'branch', 'stalk', 'green', 'thorn', 'foliage'];
+
+function isGreenish(mat: THREE.Material): boolean {
+  const color = (mat as THREE.MeshStandardMaterial).color;
+  if (!color) return false;
+  const hsl = { h: 0, s: 0, l: 0 };
+  color.getHSL(hsl);
+  // green hue: 80°–160° → 0.22–0.44 in THREE.js 0-1 range
+  return hsl.h >= 0.22 && hsl.h <= 0.44 && hsl.s > 0.15;
+}
+
+function applyStemLeafClip(scene: THREE.Group) {
   scene.traverse((node) => {
     const mesh = node as THREE.Mesh;
     if (!mesh.isMesh) return;
-    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    mats.forEach((m) => { (m as THREE.Material).clippingPlanes = planes; });
+
+    const mats = Array.isArray(mesh.material)
+      ? (mesh.material as THREE.Material[])
+      : [mesh.material as THREE.Material];
+
+    // Build a combined name string for keyword matching
+    const names = [mesh.name, ...mats.map((m) => m.name)]
+      .join(' ').toLowerCase();
+
+    // Never clip flower/petal meshes
+    if (FLOWER_KEYWORDS.some((k) => names.includes(k))) return;
+
+    // Clip if name suggests stem/leaf, OR material is green-hued
+    const isStemLeaf =
+      STEM_LEAF_KEYWORDS.some((k) => names.includes(k)) ||
+      mats.some((m) => isGreenish(m));
+
+    if (isStemLeaf) {
+      mats.forEach((m) => { m.clippingPlanes = STEM_LEAF_CLIP; });
+    }
   });
 }
 
@@ -61,7 +88,7 @@ function RoseModel({ color }: { color: RoseColor }) {
   const { scene } = useGLTF(ROSE_GLB[color]);
   const cloned = useMemo(() => {
     const c = cloneScene(scene as unknown as THREE.Group);
-    applyClipPlanes(c, ROSE_CLIP_PLANES);
+    applyStemLeafClip(c);
     return c;
   }, [scene]);
   return (
