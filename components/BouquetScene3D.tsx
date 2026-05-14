@@ -17,10 +17,26 @@ const ROSE_GLB: Record<RoseColor, string> = {
 
 const WRAPPER_GLB = '/assets/3d/wrappers/wrapper_ribbon_tied_base.glb';
 
-const ROSE_SCALE = 0.62;
-const ROSE_Y     = -0.56;
+const ROSE_SCALE = 0.66;
+const ROSE_Y     = -0.50;
 const ROSE_Z     = 0.02;
 const ROSE_TILT  = -5 * (Math.PI / 180);
+
+// Clip the rose below the wrapper's bottom edge (world-space Y).
+// Wrapper sits at y=-0.68, scale=0.78 → bottom ≈ y=-1.38.
+// Cutting at -1.05 hides any stem/leaf that peeks below the wrapper.
+const ROSE_CLIP_PLANES = [
+  new THREE.Plane(new THREE.Vector3(0, 1, 0), 1.05),
+];
+
+function applyClipPlanes(scene: THREE.Group, planes: THREE.Plane[]) {
+  scene.traverse((node) => {
+    const mesh = node as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    mats.forEach((m) => { (m as THREE.Material).clippingPlanes = planes; });
+  });
+}
 
 function cloneScene(scene: THREE.Group): THREE.Group {
   const clone = scene.clone(true);
@@ -38,7 +54,11 @@ function cloneScene(scene: THREE.Group): THREE.Group {
 
 function RoseModel({ color }: { color: RoseColor }) {
   const { scene } = useGLTF(ROSE_GLB[color]);
-  const cloned = useMemo(() => cloneScene(scene as unknown as THREE.Group), [scene]);
+  const cloned = useMemo(() => {
+    const c = cloneScene(scene as unknown as THREE.Group);
+    applyClipPlanes(c, ROSE_CLIP_PLANES);
+    return c;
+  }, [scene]);
   return (
     <group position={[0, ROSE_Y, ROSE_Z]} scale={ROSE_SCALE} rotation={[ROSE_TILT, 0, 0]}>
       <primitive object={cloned} />
@@ -93,7 +113,7 @@ export default function BouquetScene3D({
   return (
     <Canvas
       camera={{ position: [0, 0.8, 3.8], fov: 42 }}
-      gl={{ antialias: true, alpha: false }}
+      gl={{ antialias: true, alpha: false, localClippingEnabled: true }}
       onCreated={({ gl }) => {
         gl.setClearColor(new THREE.Color(isShowcase ? '#0A0A0A' : '#F4F2EE'), 1);
         gl.toneMapping = THREE.ACESFilmicToneMapping;
