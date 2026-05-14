@@ -17,16 +17,21 @@ const ROSE_GLB: Record<RoseColor, string> = {
 
 const WRAPPER_GLB = '/assets/3d/wrappers/wrapper_ribbon_tied_base.glb';
 
-const ROSE_SCALE = 0.72;
-const ROSE_Y     = -0.46;
-const ROSE_Z     = 0.05;
+const ROSE_SCALE = 0.76;
+const ROSE_Y     = -0.40;
+const ROSE_Z     = 0.06;
 const ROSE_TILT  = -3 * (Math.PI / 180);
 
-// Clip plane at world-space y=-0.90: anything below this is hidden.
-// Wrapper bottom ≈ y=-1.38, ribbon area ≈ y=-1.0.
-// Cutting at -0.90 ensures no stem/leaf is visible below or around wrapper exterior.
+// 5-sided box clip (open top): keeps stem/leaf inside wrapper volume.
+// Bottom  y > -0.75  (cuts below ribbon area, well inside wrapper)
+// ±X      |x| < 0.42 (matches wrapper opening width ≈ ±0.35, with margin for bloom)
+// ±Z      |z| < 0.42
 const ROSE_CLIP_PLANES = [
-  new THREE.Plane(new THREE.Vector3(0, 1, 0), 0.90),
+  new THREE.Plane(new THREE.Vector3( 0,  1,  0),  0.75), // clip y < -0.75
+  new THREE.Plane(new THREE.Vector3(-1,  0,  0),  0.42), // clip x >  0.42
+  new THREE.Plane(new THREE.Vector3( 1,  0,  0),  0.42), // clip x < -0.42
+  new THREE.Plane(new THREE.Vector3( 0,  0, -1),  0.42), // clip z >  0.42
+  new THREE.Plane(new THREE.Vector3( 0,  0,  1),  0.42), // clip z < -0.42
 ];
 
 function applyClipPlanes(scene: THREE.Group, planes: THREE.Plane[]) {
