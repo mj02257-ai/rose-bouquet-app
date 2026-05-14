@@ -31,16 +31,18 @@ function cloneScene(scene: THREE.Group): THREE.Group {
 }
 
 // ── Slot fallback — used only for roses loaded from localStorage without x3d ──
+// Y=-0.45: stem base sits 0.16 below the wrapper opening (~y=-0.29) so stems
+// are hidden inside the wrapper and only flower heads show above it.
 const SLOTS: ReadonlyArray<[number, number, number, number, number]> = [
-  [  0.00, -0.29,  0.00,  -10,    0 ],
-  [ -0.18, -0.29,  0.08,  -10,   +8 ],
-  [  0.18, -0.29,  0.08,  -10,   -8 ],
-  [  0.00, -0.29, -0.12,  -10,    0 ],
-  [ -0.22, -0.29, -0.06,  -10,  +10 ],
-  [  0.22, -0.29, -0.06,  -10,  -10 ],
-  [ -0.32, -0.29,  0.02,  -10,  +16 ],
-  [  0.32, -0.29,  0.02,  -10,  -16 ],
-  [  0.00, -0.29,  0.16,  -10,    0 ],
+  [  0.00, -0.45,  0.00,  -10,    0 ],
+  [ -0.18, -0.45,  0.08,  -10,   +8 ],
+  [  0.18, -0.45,  0.08,  -10,   -8 ],
+  [  0.00, -0.45, -0.12,  -10,    0 ],
+  [ -0.22, -0.45, -0.06,  -10,  +10 ],
+  [  0.22, -0.45, -0.06,  -10,  -10 ],
+  [ -0.32, -0.45,  0.02,  -10,  +16 ],
+  [  0.32, -0.45,  0.02,  -10,  -16 ],
+  [  0.00, -0.45,  0.16,  -10,    0 ],
 ];
 
 function getSlotOrder(total: number): number[] {
@@ -107,9 +109,10 @@ function PendingRose3D({
       rc.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
       const hit = new THREE.Vector3();
       if (rc.ray.intersectPlane(plane, hit)) {
+        // Clamp to wrapper footprint so stems stay inside the bouquet
         posChangeCb.current(
-          Math.max(-0.55, Math.min(0.55, hit.x)),
-          Math.max(-0.42, Math.min(0.42, hit.z)),
+          Math.max(-0.40, Math.min(0.40, hit.x)),
+          Math.max(-0.30, Math.min(0.30, hit.z)),
         );
       }
     };

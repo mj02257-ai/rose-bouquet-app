@@ -79,7 +79,7 @@ export default function HomePage() {
 
   // Select rose type from library — shows pending draggable rose in 3D canvas
   const handleSelectRoseType = useCallback((rose: RoseType) => {
-    setPendingRose({ roseTypeId: rose.id, x3d: 0, y3d: -0.29, z3d: 0 });
+    setPendingRose({ roseTypeId: rose.id, x3d: 0, y3d: -0.45, z3d: 0 });
     setSelectedId(null);
     setIsPropertiesOpen(true);
   }, []);
