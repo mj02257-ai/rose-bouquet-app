@@ -17,9 +17,9 @@ const ROSE_GLB: Record<RoseColor, string> = {
 
 const WRAPPER_GLB = '/assets/3d/wrappers/wrapper_ribbon_tied_base.glb';
 
-// Single rose — scale up from the old per-rose 0.354 by ~1.47×, stem deeper into wrapper
-const ROSE_SCALE = 0.52;
-const ROSE_Y     = -0.72;   // stem base well inside wrapper (opening ≈ y -0.29)
+// Single rose — scale 2× of previous 0.52; y lowered -0.38 so stem base is deep inside wrapper
+const ROSE_SCALE = 1.04;
+const ROSE_Y     = -1.10;   // stem fully inside wrapper, flower head prominent above it
 const ROSE_TILT  = -10 * (Math.PI / 180);
 
 function cloneScene(scene: THREE.Group): THREE.Group {
