@@ -112,7 +112,7 @@ export default function RoseLibrary({ onAddRose, onDragStart, isOpen, onClose }:
               <RoseCard
                 key={rose.id}
                 rose={rose}
-                onAdd={onAddRose}
+                onAdd={(r) => { onAddRose(r); onClose(); }}
                 onDragStart={onDragStart}
               />
             ))

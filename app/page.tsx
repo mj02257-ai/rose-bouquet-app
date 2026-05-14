@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { BouquetRose, BouquetData, RoseType, HistoryEntry, WrapperState, EditingRoseData } from '@/types/bouquet';
 import { ROSES, WRAPPERS, DEFAULT_WRAPPER_ID } from '@/lib/roseData';
 import Header from '@/components/Header';
@@ -18,7 +18,7 @@ const MAX_HISTORY = 30;
 const MAX_ROSES   = 9;
 
 // Y positions in 3D scene
-const PENDING_Y  = -0.20;  // above wrapper opening — visible to user
+const PENDING_Y  =  0.00;  // clearly above wrapper (opening ≈ -0.29) — rose floats visibly
 const PLACED_Y   = -0.45;  // inside wrapper — stem hidden, flower shows above
 
 export default function HomePage() {
@@ -46,12 +46,20 @@ export default function HomePage() {
     []
   );
 
+  // Refs so handleSelect closure can read current placement state without
+  // being recreated whenever pendingRose/editingRose changes (avoids stale callbacks).
+  const pendingRoseRef  = useRef<PendingRoseData | null>(null);
+  pendingRoseRef.current  = pendingRose;
+  const editingRoseRef  = useRef<EditingRoseData | null>(null);
+  editingRoseRef.current  = editingRose;
+
   // ── Stage 1: select from library → pendingRose spawns above bouquet ──────────
   const handleSelectRoseType = useCallback((rose: RoseType) => {
     setEditingRose(null);        // cancel any in-progress editing
     setSelectedId(null);
     setPendingRose({ roseTypeId: rose.id, x3d: 0, y3d: PENDING_Y, z3d: 0 });
-    setIsPropertiesOpen(true);
+    // Do NOT open the panel overlay — on mobile it covers the canvas.
+    // Desktop panel is always visible. Mobile uses the bottom section.
   }, []);
 
   // Drag updates x/z only; y stays at PENDING_Y (drag plane level)
@@ -126,13 +134,15 @@ export default function HomePage() {
   }, []);
 
   const handleSelect = useCallback((id: string | null) => {
+    // Clicking a fixed rose while placing a new one must NOT interrupt placement.
+    if (id && (pendingRoseRef.current || editingRoseRef.current)) return;
     if (id) {
       setPendingRose(null);
       setEditingRose(null);
     }
     setSelectedId(id);
     if (id) setIsPropertiesOpen(true);
-  }, []);
+  }, []); // stable — reads state via refs
 
   const handleRotationChange = useCallback(
     (rotation: number) => {

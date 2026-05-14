@@ -145,11 +145,16 @@ function PendingRose3D({
         onDragStart();
       }}
     >
+      {/* Invisible large sphere — expands hit area for reliable drag initiation */}
+      <mesh>
+        <sphereGeometry args={[1.8, 8, 8]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
       <RoseInstance roseTypeId={roseTypeId} />
-      {/* Dashed selection ring indicating "pending / not yet placed" */}
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0.5, 0]}>
-        <ringGeometry args={[1.6, 2.0, 40]} />
-        <meshBasicMaterial color="#888888" opacity={0.28} transparent side={THREE.DoubleSide} />
+      {/* Bright ring — "pending / drag to position" indicator */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0.6, 0]}>
+        <ringGeometry args={[1.8, 2.3, 48]} />
+        <meshBasicMaterial color="#4FC3F7" opacity={0.70} transparent side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
@@ -383,7 +388,7 @@ export default function BouquetScene3D({
         autoRotateSpeed={1.4}
         minPolarAngle={Math.PI / 6}
         maxPolarAngle={Math.PI * 0.70}
-        enabled={controlsEnabled && !isDraggingPending}
+        enabled={controlsEnabled && !isDraggingPending && !pendingRose}
       />
     </Canvas>
   );
