@@ -17,16 +17,16 @@ const ROSE_GLB: Record<RoseColor, string> = {
 
 const WRAPPER_GLB = '/assets/3d/wrappers/wrapper_ribbon_tied_base.glb';
 
-const ROSE_SCALE = 0.66;
-const ROSE_Y     = -0.50;
-const ROSE_Z     = 0.02;
-const ROSE_TILT  = -5 * (Math.PI / 180);
+const ROSE_SCALE = 0.72;
+const ROSE_Y     = -0.46;
+const ROSE_Z     = 0.05;
+const ROSE_TILT  = -3 * (Math.PI / 180);
 
-// Clip the rose below the wrapper's bottom edge (world-space Y).
-// Wrapper sits at y=-0.68, scale=0.78 → bottom ≈ y=-1.38.
-// Cutting at -1.05 hides any stem/leaf that peeks below the wrapper.
+// Clip plane at world-space y=-0.90: anything below this is hidden.
+// Wrapper bottom ≈ y=-1.38, ribbon area ≈ y=-1.0.
+// Cutting at -0.90 ensures no stem/leaf is visible below or around wrapper exterior.
 const ROSE_CLIP_PLANES = [
-  new THREE.Plane(new THREE.Vector3(0, 1, 0), 1.05),
+  new THREE.Plane(new THREE.Vector3(0, 1, 0), 0.90),
 ];
 
 function applyClipPlanes(scene: THREE.Group, planes: THREE.Plane[]) {
