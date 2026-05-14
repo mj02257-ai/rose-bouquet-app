@@ -10,6 +10,7 @@ const SUGGESTED_MESSAGES = [
 
 interface PropertiesPanelProps {
   pendingRoseType: RoseType | null;
+  canPlace: boolean;
   editingRose: EditingRoseData | null;
   editingRoseType: RoseType | null;
   selectedRose: BouquetRose | null;
@@ -31,6 +32,7 @@ interface PropertiesPanelProps {
 
 export default function PropertiesPanel({
   pendingRoseType,
+  canPlace,
   editingRose,
   editingRoseType,
   selectedRose,
@@ -97,20 +99,23 @@ export default function PropertiesPanel({
                 />
                 <p className="text-[12px] text-black/70 font-medium">{pendingRoseType.name}</p>
               </div>
-              <p className="text-[11px] text-black/35 leading-relaxed">
-                캔버스에서 장미를 드래그해 원하는 위치로 이동한 후 아래 버튼을 눌러주세요.
-              </p>
-              <button
-                onClick={onConfirmPlace}
-                disabled={totalRoses >= 9}
-                className={`w-full py-2.5 text-[12px] font-semibold rounded-sm transition-all duration-150
-                  ${totalRoses < 9
-                    ? 'bg-[#1A1816] text-white hover:bg-black'
-                    : 'bg-black/[0.05] text-black/22 cursor-not-allowed border border-black/[0.07]'
-                  }`}
-              >
-                {totalRoses < 9 ? '여기에 두기' : '최대 9송이'}
-              </button>
+              {canPlace ? (
+                <>
+                  <p className="text-[11px] text-black/35 leading-relaxed">
+                    원하는 위치로 드래그한 후 아래 버튼을 눌러주세요.
+                  </p>
+                  <button
+                    onClick={onConfirmPlace}
+                    className="w-full py-2.5 text-[12px] font-semibold rounded-sm bg-[#1A1816] text-white hover:bg-black transition-all duration-150"
+                  >
+                    여기에 두기
+                  </button>
+                </>
+              ) : (
+                <p className="text-[11px] text-black/35 leading-relaxed">
+                  꽃다발 위로 장미를 드래그해주세요.
+                </p>
+              )}
               <button
                 onClick={onCancelPending}
                 className="w-full py-1.5 text-[11px] text-black/35 hover:text-black/55 transition-colors"

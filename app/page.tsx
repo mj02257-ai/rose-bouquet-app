@@ -202,6 +202,11 @@ export default function HomePage() {
   const bouquetData: BouquetData = { roses, wrapperId, message };
   const isTying    = editWrapperState === 'tying';
   const atMaxRoses = roses.length >= MAX_ROSES;
+  // pendingRose is "over the wrapper drop zone" when within roughly ±0.55 of center.
+  // Starting position (0,0,0) is inside the zone, so the button is visible immediately.
+  const PLACE_RADIUS = 0.55;
+  const canPlace = pendingRose !== null &&
+    Math.sqrt(pendingRose.x3d ** 2 + pendingRose.z3d ** 2) <= PLACE_RADIUS;
 
   // ── Persistence ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -358,14 +363,18 @@ export default function HomePage() {
                         className="w-3.5 h-3.5 rounded-full border border-black/10 flex-shrink-0"
                         style={{ backgroundColor: pendingRoseType.color }}
                       />
-                      <span className="text-[11px] text-black/50 truncate">{pendingRoseType.name} — 드래그 후 두기</span>
+                      <span className="text-[11px] text-black/50 truncate">
+                        {canPlace ? `${pendingRoseType.name} — 두기 가능` : `${pendingRoseType.name} — 꽃다발 위로 드래그`}
+                      </span>
                     </div>
-                    <button
-                      onClick={handleConfirmPlace}
-                      className="px-4 py-2 rounded-sm bg-[#111110] text-white text-[11px] font-semibold hover:bg-black transition-colors flex-shrink-0"
-                    >
-                      여기에 두기
-                    </button>
+                    {canPlace && (
+                      <button
+                        onClick={handleConfirmPlace}
+                        className="px-4 py-2 rounded-sm bg-[#111110] text-white text-[11px] font-semibold hover:bg-black transition-colors flex-shrink-0"
+                      >
+                        여기에 두기
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -434,6 +443,7 @@ export default function HomePage() {
           {!isPreviewMode && (
             <PropertiesPanel
               pendingRoseType={pendingRoseType}
+              canPlace={canPlace}
               editingRose={editingRose}
               editingRoseType={editingRoseType}
               selectedRose={selectedRose}

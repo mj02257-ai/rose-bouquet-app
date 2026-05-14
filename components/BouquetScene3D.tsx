@@ -119,9 +119,11 @@ function PendingRose3D({
       const hit = new THREE.Vector3();
       if (rc.ray.intersectPlane(plane, hit)) {
         // Clamp to wrapper footprint so stems stay inside the bouquet
+        // Wider clamp so rose can be dragged outside wrapper — canPlace logic
+        // in page.tsx determines whether the position is over the drop zone.
         posChangeCb.current(
-          Math.max(-0.40, Math.min(0.40, hit.x)),
-          Math.max(-0.30, Math.min(0.30, hit.z)),
+          Math.max(-1.5, Math.min(1.5, hit.x)),
+          Math.max(-1.2, Math.min(1.2, hit.z)),
         );
       }
     };
