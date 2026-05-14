@@ -17,10 +17,10 @@ const ROSE_GLB: Record<RoseColor, string> = {
 
 const WRAPPER_GLB = '/assets/3d/wrappers/wrapper_ribbon_tied_base.glb';
 
-// Single rose — scale 2× of previous 0.52; y lowered -0.38 so stem base is deep inside wrapper
-const ROSE_SCALE = 1.04;
-const ROSE_Y     = -1.10;   // stem fully inside wrapper, flower head prominent above it
-const ROSE_TILT  = -10 * (Math.PI / 180);
+const ROSE_SCALE = 0.62;
+const ROSE_Y     = -0.64;
+const ROSE_Z     = 0.02;
+const ROSE_TILT  = -5 * (Math.PI / 180);
 
 function cloneScene(scene: THREE.Group): THREE.Group {
   const clone = scene.clone(true);
@@ -40,7 +40,7 @@ function RoseModel({ color }: { color: RoseColor }) {
   const { scene } = useGLTF(ROSE_GLB[color]);
   const cloned = useMemo(() => cloneScene(scene as unknown as THREE.Group), [scene]);
   return (
-    <group position={[0, ROSE_Y, 0]} scale={ROSE_SCALE} rotation={[ROSE_TILT, 0, 0]}>
+    <group position={[0, ROSE_Y, ROSE_Z]} scale={ROSE_SCALE} rotation={[ROSE_TILT, 0, 0]}>
       <primitive object={cloned} />
     </group>
   );
