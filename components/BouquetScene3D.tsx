@@ -22,28 +22,30 @@ const ROSE_Y     = -0.52;
 const ROSE_Z     = 0.04;
 const ROSE_TILT  = -3 * (Math.PI / 180);
 
-// ── Mesh-visibility approach ──────────────────────────────────────────────────
-// Strategy: show ONLY petal meshes. Hide everything else unconditionally.
-// This guarantees no green leaf/stem is ever visible, regardless of mesh names.
+// ── Selective hide: leaf / thorn / sepal only ────────────────────────────────
+// Keep: flower/petal/head  +  stem/stalk
+// Hide: leaf / leaves / foliage / thorn / sepal  +  green-colored unknowns
 
-// Meshes with these name keywords are NEVER hidden (flower parts).
-const FLOWER_KEYWORDS = ['rose', 'petal', 'bloom', 'flower', 'head', 'bud'];
+// Never hide these (flower parts + stem)
+const KEEP_KEYWORDS  = ['rose', 'petal', 'bloom', 'flower', 'head', 'bud', 'stem', 'stalk', 'trunk', 'peduncle'];
+// Always hide these
+const HIDE_KEYWORDS  = ['leaf', 'leaves', 'foliage', 'thorn', 'sepal', 'calyx'];
 
-// Returns true when a material is a petal color (red / pink / white / cream / peach).
-function isPetalMaterial(mat: THREE.Material): boolean {
+// Green-ish color = leaf / sepal that slipped through name matching.
+// Brown/dark stem material will NOT match (R ≈ G, low saturation).
+function isGreenMaterial(mat: THREE.Material): boolean {
   const color = (mat as THREE.MeshStandardMaterial).color;
   if (!color) return false;
   const hsl = { h: 0, s: 0, l: 0 };
   color.getHSL(hsl);
-  const isWarmRed = (hsl.h < 0.09 || hsl.h > 0.88) && hsl.s > 0.12; // red / pink
-  const isLight   = hsl.l > 0.72;                                       // white / cream
-  const isPeach   = hsl.h >= 0.03 && hsl.h <= 0.12 && hsl.s > 0.15 && hsl.l > 0.50;
-  return isWarmRed || isLight || isPeach;
+  // Hue 0.17–0.50 = yellow-green → green → teal, any meaningful saturation
+  if (hsl.h >= 0.17 && hsl.h <= 0.50 && hsl.s > 0.06) return true;
+  // RGB fallback: G clearly dominant over both R and B
+  if (color.g > color.r * 1.10 && color.g > color.b * 1.08 && color.g > 0.07) return true;
+  return false;
 }
 
-// Hide every mesh that is not identified as a petal/bloom.
-// Leaves, stems, thorns, sepals → all hidden.
-function hideAllExceptPetals(scene: THREE.Group) {
+function hideLeafMeshes(scene: THREE.Group) {
   scene.traverse((node) => {
     const mesh = node as THREE.Mesh;
     if (!mesh.isMesh) return;
@@ -54,14 +56,20 @@ function hideAllExceptPetals(scene: THREE.Group) {
 
     const names = [mesh.name, ...mats.map((m) => m.name)].join(' ').toLowerCase();
 
-    // ① Keep by name (rose / petal / bloom …)
-    if (FLOWER_KEYWORDS.some((k) => names.includes(k))) return;
+    // ① Explicit keep: flower parts and stem — never hidden
+    if (KEEP_KEYWORDS.some((k) => names.includes(k))) return;
 
-    // ② Keep by petal color (warm red / pink / white / peach)
-    if (mats.some((m) => isPetalMaterial(m))) return;
+    // ② Explicit hide: leaf / thorn / sepal by name
+    if (HIDE_KEYWORDS.some((k) => names.includes(k))) {
+      mesh.visible = false;
+      return;
+    }
 
-    // ③ Everything else → invisible (leaf, stem, thorn, sepal, unknown)
-    mesh.visible = false;
+    // ③ Hide by green material color (catches unnamed leaf/sepal meshes)
+    if (mats.some((m) => isGreenMaterial(m))) {
+      mesh.visible = false;
+    }
+    // ④ Everything else (brown/dark stem, unknown) → leave visible
   });
 }
 
@@ -83,7 +91,7 @@ function RoseModel({ color }: { color: RoseColor }) {
   const { scene } = useGLTF(ROSE_GLB[color]);
   const cloned = useMemo(() => {
     const c = cloneScene(scene as unknown as THREE.Group);
-    hideAllExceptPetals(c);
+    hideLeafMeshes(c);
     return c;
   }, [scene]);
   return (
