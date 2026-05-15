@@ -56,16 +56,16 @@ function hideLeafMeshes(scene: THREE.Group) {
 
     const names = [mesh.name, ...mats.map((m) => m.name)].join(' ').toLowerCase();
 
-    // ① Explicit keep: flower parts and stem — never hidden
-    if (KEEP_KEYWORDS.some((k) => names.includes(k))) return;
-
-    // ② Explicit hide: leaf / thorn / sepal by name
+    // ① HIDE first (higher priority) — catches "Rose_Leaf_001" style names
     if (HIDE_KEYWORDS.some((k) => names.includes(k))) {
       mesh.visible = false;
       return;
     }
 
-    // ③ Hide by green material color (catches unnamed leaf/sepal meshes)
+    // ② Keep confirmed flower parts and stem — checked AFTER hide
+    if (KEEP_KEYWORDS.some((k) => names.includes(k))) return;
+
+    // ③ Hide by green material color (unnamed leaf/sepal meshes)
     if (mats.some((m) => isGreenMaterial(m))) {
       mesh.visible = false;
     }
