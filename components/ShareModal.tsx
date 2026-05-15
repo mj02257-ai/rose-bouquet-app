@@ -52,7 +52,7 @@ export default function ShareModal({ bouquetData, onClose }: ShareModalProps) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(30,28,26,0.32)' }}
+      style={{ backgroundColor: 'rgba(244,242,238,0.86)' }}
       onClick={onClose}
     >
       <div
