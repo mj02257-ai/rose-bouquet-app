@@ -22,54 +22,29 @@ const ROSE_Y     = -0.52;
 const ROSE_Z     = 0.04;
 const ROSE_TILT  = -3 * (Math.PI / 180);
 
-// ── Selective hide: leaf / thorn / sepal only ────────────────────────────────
-// Keep: flower/petal/head  +  stem/stalk
-// Hide: leaf / leaves / foliage / thorn / sepal  +  green-colored unknowns
+// ── Rose mesh clipping ────────────────────────────────────────────────────────
+// All 4 GLB files have a SINGLE unnamed mesh (petals + leaves + stem merged).
+// Name/color-based hiding is impossible. Clip planes cut geometry at a world-space
+// threshold: world Y = -0.60 cuts below the petal base (model Y ≈ -0.10) where
+// leaf/sepal geometry begins, while keeping all petals above it intact.
+// Side clips ±0.38 contain any lateral overflow within the wrapper opening.
 
-// Never hide these (flower parts + stem)
-const KEEP_KEYWORDS  = ['rose', 'petal', 'bloom', 'flower', 'head', 'bud', 'stem', 'stalk', 'trunk', 'peduncle'];
-// Always hide these
-const HIDE_KEYWORDS  = ['leaf', 'leaves', 'foliage', 'thorn', 'sepal', 'calyx'];
+const ROSE_CLIP: THREE.Plane[] = [
+  new THREE.Plane(new THREE.Vector3( 0,  1,  0),  0.60), // clip world y < -0.60
+  new THREE.Plane(new THREE.Vector3(-1,  0,  0),  0.38), // clip world x >  0.38
+  new THREE.Plane(new THREE.Vector3( 1,  0,  0),  0.38), // clip world x < -0.38
+  new THREE.Plane(new THREE.Vector3( 0,  0, -1),  0.38), // clip world z >  0.38
+  new THREE.Plane(new THREE.Vector3( 0,  0,  1),  0.38), // clip world z < -0.38
+];
 
-// Green-ish color = leaf / sepal that slipped through name matching.
-// Brown/dark stem material will NOT match (R ≈ G, low saturation).
-function isGreenMaterial(mat: THREE.Material): boolean {
-  const color = (mat as THREE.MeshStandardMaterial).color;
-  if (!color) return false;
-  const hsl = { h: 0, s: 0, l: 0 };
-  color.getHSL(hsl);
-  // Hue 0.17–0.50 = yellow-green → green → teal, any meaningful saturation
-  if (hsl.h >= 0.17 && hsl.h <= 0.50 && hsl.s > 0.06) return true;
-  // RGB fallback: G clearly dominant over both R and B
-  if (color.g > color.r * 1.10 && color.g > color.b * 1.08 && color.g > 0.07) return true;
-  return false;
-}
-
-function hideLeafMeshes(scene: THREE.Group) {
+function applyRoseClip(scene: THREE.Group) {
   scene.traverse((node) => {
     const mesh = node as THREE.Mesh;
     if (!mesh.isMesh) return;
-
     const mats = Array.isArray(mesh.material)
       ? (mesh.material as THREE.Material[])
       : [mesh.material as THREE.Material];
-
-    const names = [mesh.name, ...mats.map((m) => m.name)].join(' ').toLowerCase();
-
-    // ① HIDE first (higher priority) — catches "Rose_Leaf_001" style names
-    if (HIDE_KEYWORDS.some((k) => names.includes(k))) {
-      mesh.visible = false;
-      return;
-    }
-
-    // ② Keep confirmed flower parts and stem — checked AFTER hide
-    if (KEEP_KEYWORDS.some((k) => names.includes(k))) return;
-
-    // ③ Hide by green material color (unnamed leaf/sepal meshes)
-    if (mats.some((m) => isGreenMaterial(m))) {
-      mesh.visible = false;
-    }
-    // ④ Everything else (brown/dark stem, unknown) → leave visible
+    mats.forEach((m) => { (m as THREE.Material).clippingPlanes = ROSE_CLIP; });
   });
 }
 
@@ -91,7 +66,7 @@ function RoseModel({ color }: { color: RoseColor }) {
   const { scene } = useGLTF(ROSE_GLB[color]);
   const cloned = useMemo(() => {
     const c = cloneScene(scene as unknown as THREE.Group);
-    hideLeafMeshes(c);
+    applyRoseClip(c);
     return c;
   }, [scene]);
   return (
