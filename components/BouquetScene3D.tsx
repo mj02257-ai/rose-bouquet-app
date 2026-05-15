@@ -125,17 +125,18 @@ export interface BouquetScene3DProps {
   wrapperState: WrapperState;
   autoRotate?: boolean;
   onTyingComplete?: () => void;
+  forceLightBg?: boolean; // keep ivory even when wrapperState='ribbonTied'
 }
 
 export default function BouquetScene3D({
-  selectedRoseColor, wrapperState, autoRotate = false, onTyingComplete,
+  selectedRoseColor, wrapperState, autoRotate = false, onTyingComplete, forceLightBg = false,
 }: BouquetScene3DProps) {
   useEffect(() => {
     Object.values(ROSE_GLB).forEach((p) => useGLTF.preload(p));
     useGLTF.preload(WRAPPER_GLB);
   }, []);
 
-  const isShowcase = wrapperState === 'ribbonTied';
+  const isShowcase = !forceLightBg && wrapperState === 'ribbonTied';
 
   return (
     <Canvas
