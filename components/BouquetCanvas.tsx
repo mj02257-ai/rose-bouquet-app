@@ -21,6 +21,7 @@ export default function BouquetCanvas({
         selectedRoseColor={selectedRoseColor}
         wrapperState={wrapperState}
         onTyingComplete={onTyingComplete}
+        forceLightBg={true}
       />
     </div>
   );
