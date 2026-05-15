@@ -22,35 +22,53 @@ const ROSE_Y     = -0.52;
 const ROSE_Z     = 0.04;
 const ROSE_TILT  = -3 * (Math.PI / 180);
 
-// 5-sided box clip applied to non-petal meshes only (open top → bloom never clipped).
-// Bottom y=-0.78, sides ±0.44.
+// ── Mesh-visibility approach ──────────────────────────────────────────────────
+// Hide green/stem/leaf meshes entirely (visible=false) instead of clipping.
+// Clip planes kept as a secondary safety net.
+
 const STEM_LEAF_CLIP: THREE.Plane[] = [
-  new THREE.Plane(new THREE.Vector3( 0,  1,  0),  0.78), // clip y < -0.78
-  new THREE.Plane(new THREE.Vector3(-1,  0,  0),  0.44), // clip x >  0.44
-  new THREE.Plane(new THREE.Vector3( 1,  0,  0),  0.44), // clip x < -0.44
-  new THREE.Plane(new THREE.Vector3( 0,  0, -1),  0.44), // clip z >  0.44
-  new THREE.Plane(new THREE.Vector3( 0,  0,  1),  0.44), // clip z < -0.44
+  new THREE.Plane(new THREE.Vector3( 0,  1,  0),  0.78),
+  new THREE.Plane(new THREE.Vector3(-1,  0,  0),  0.44),
+  new THREE.Plane(new THREE.Vector3( 1,  0,  0),  0.44),
+  new THREE.Plane(new THREE.Vector3( 0,  0, -1),  0.44),
+  new THREE.Plane(new THREE.Vector3( 0,  0,  1),  0.44),
 ];
 
-// Petal keyword allowlist — meshes with these names are never clipped.
-const FLOWER_KEYWORDS = ['rose', 'petal', 'bloom', 'flower', 'head', 'bud', 'sepal'];
+// Meshes whose names contain these keywords are hidden unconditionally.
+const HIDE_KEYWORDS = [
+  'leaf', 'leaves', 'stem', 'stalk', 'branch', 'thorn', 'foliage', 'green', 'sepal',
+];
 
-// Detect petal material by color: warm reds/pinks/peach + white/cream.
-// Stems and leaves are green/brown and will NOT match this check.
+// Meshes with these name keywords are NEVER hidden.
+const FLOWER_KEYWORDS = ['rose', 'petal', 'bloom', 'flower', 'head', 'bud'];
+
+// Returns true if the material color is green/yellowish-green.
+// Uses dual check: HSL hue range + RGB G-dominance.
+function isGreenMaterial(mat: THREE.Material): boolean {
+  const color = (mat as THREE.MeshStandardMaterial).color;
+  if (!color) return false;
+  const hsl = { h: 0, s: 0, l: 0 };
+  color.getHSL(hsl);
+  // Hue 0.17–0.50 covers yellow-green → green → teal; sat >0.08 filters out near-grays.
+  if (hsl.h >= 0.17 && hsl.h <= 0.50 && hsl.s > 0.08) return true;
+  // RGB fallback: green channel clearly dominant (catches low-sat greens)
+  if (color.g > color.r * 1.12 && color.g > color.b * 1.05 && color.g > 0.08) return true;
+  return false;
+}
+
+// Returns true if the material is a warm petal color (red/pink/white/cream/peach).
 function isPetalMaterial(mat: THREE.Material): boolean {
   const color = (mat as THREE.MeshStandardMaterial).color;
   if (!color) return false;
   const hsl = { h: 0, s: 0, l: 0 };
   color.getHSL(hsl);
-  const isWarmRed  = (hsl.h < 0.09 || hsl.h > 0.88) && hsl.s > 0.15; // red/pink
-  const isLight    = hsl.l > 0.75;                                       // white/cream
-  const isPeach    = hsl.h >= 0.04 && hsl.h <= 0.10 && hsl.s > 0.20 && hsl.l > 0.55;
+  const isWarmRed = (hsl.h < 0.09 || hsl.h > 0.88) && hsl.s > 0.15;
+  const isLight   = hsl.l > 0.75;
+  const isPeach   = hsl.h >= 0.04 && hsl.h <= 0.10 && hsl.s > 0.20 && hsl.l > 0.55;
   return isWarmRed || isLight || isPeach;
 }
 
-// Inverse approach: clip EVERYTHING except flower/petal meshes.
-// This is more reliable than trying to enumerate all stem/leaf mesh names.
-function applyStemLeafClip(scene: THREE.Group) {
+function hideGreenAndClipRest(scene: THREE.Group) {
   scene.traverse((node) => {
     const mesh = node as THREE.Mesh;
     if (!mesh.isMesh) return;
@@ -61,13 +79,25 @@ function applyStemLeafClip(scene: THREE.Group) {
 
     const names = [mesh.name, ...mats.map((m) => m.name)].join(' ').toLowerCase();
 
-    // Exempt flower/petal by name
+    // ① Never touch confirmed flower/petal meshes
     if (FLOWER_KEYWORDS.some((k) => names.includes(k))) return;
-    // Exempt flower/petal by material color (red, pink, white, peach)
-    if (mats.some((m) => isPetalMaterial(m))) return;
 
-    // Everything else (stem, leaf, thorn, brown bark, unknown) gets clipped
-    mats.forEach((m) => { m.clippingPlanes = STEM_LEAF_CLIP; });
+    // ② Hide by name keyword (stem / leaf / thorn …)
+    if (HIDE_KEYWORDS.some((k) => names.includes(k))) {
+      mesh.visible = false;
+      return;
+    }
+
+    // ③ Hide by green material color
+    if (mats.some((m) => isGreenMaterial(m))) {
+      mesh.visible = false;
+      return;
+    }
+
+    // ④ Everything else that is not a petal color gets clip planes (safety net)
+    if (!mats.some((m) => isPetalMaterial(m))) {
+      mats.forEach((m) => { m.clippingPlanes = STEM_LEAF_CLIP; });
+    }
   });
 }
 
@@ -89,7 +119,7 @@ function RoseModel({ color }: { color: RoseColor }) {
   const { scene } = useGLTF(ROSE_GLB[color]);
   const cloned = useMemo(() => {
     const c = cloneScene(scene as unknown as THREE.Group);
-    applyStemLeafClip(c);
+    hideGreenAndClipRest(c);
     return c;
   }, [scene]);
   return (
