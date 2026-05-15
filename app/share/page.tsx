@@ -3,119 +3,133 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { decodeBouquet } from '@/lib/bouquetEncoding';
-import { ROSES, WRAPPERS } from '@/lib/roseData';
-import RoseObject from '@/components/RoseObject';
-import BouquetWrapper from '@/components/BouquetWrapper';
+import type { RoseColor } from '@/components/BouquetScene3D';
+
+// SSR off — three.js / WebGL cannot run on the server
+const BouquetScene3D = dynamic(() => import('@/components/BouquetScene3D'), { ssr: false });
+
+const IVORY = '#F4F2EE';
+const DEFAULT_COLOR: RoseColor = 'red';
+const DEFAULT_MESSAGE = '어른이 된 오늘을 진심으로 축하해.';
+
+const COLOR_NAME: Record<RoseColor, string> = {
+  red: '레드', pink: '핑크', white: '화이트', peach: '피치',
+};
 
 function ShareView() {
   const searchParams = useSearchParams();
   const encoded = searchParams.get('data');
-  const data = encoded ? decodeBouquet(encoded) : null;
+  const data    = encoded ? decodeBouquet(encoded) : null;
 
-  const wrapper = WRAPPERS.find((w) => w.id === data?.wrapperId) ?? WRAPPERS[0];
-
-  if (!data) {
-    return (
-      <div className="min-h-screen bg-[#080808] flex flex-col items-center justify-center gap-4">
-        <p className="text-white/30 text-sm">꽃다발을 찾을 수 없거나 링크가 유효하지 않습니다.</p>
-        <Link href="/" className="px-4 py-2 rounded-sm bg-[#F0EDE8] text-[#0A0A0A] text-sm font-medium hover:bg-white transition-colors">
-          나만의 꽃다발 만들기
-        </Link>
-      </div>
-    );
-  }
-
-  const sortedRoses = [...data.roses].sort((a, b) => a.zIndex - b.zIndex);
+  // Extract rose color from first rose in the array (single-rose UX)
+  const roseColor: RoseColor =
+    (data?.roses?.[0]?.roseTypeId as RoseColor | undefined) ?? DEFAULT_COLOR;
+  const message       = data?.message       || DEFAULT_MESSAGE;
+  const recipientName = data?.recipientName || '';
+  const senderName    = data?.senderName    || '';
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center p-8">
-      {/* Grid bg */}
+    <div
+      className="min-h-screen flex flex-col items-center"
+      style={{ backgroundColor: IVORY }}
+    >
+
+      {/* ── Header ── */}
+      <div className="w-full max-w-md px-6 pt-10 pb-2 text-center">
+        <p className="text-[10px] text-black/28 tracking-[0.18em] uppercase mb-2 font-light">
+          성년의 날 · 장미꽃 선물
+        </p>
+        {recipientName ? (
+          <>
+            <p className="text-[11px] text-black/30 tracking-widest uppercase mb-1">For</p>
+            <h1 className="text-2xl font-light text-[#111110] tracking-wide">{recipientName}</h1>
+          </>
+        ) : (
+          <h1 className="text-xl font-light text-[#111110]/60 tracking-wide">
+            당신을 위한 한 송이
+          </h1>
+        )}
+      </div>
+
+      {/* ── 3D Bouquet Canvas ── */}
+      {/* wrapperState='wrapped' keeps canvas background ivory (#F4F2EE).
+          'ribbonTied' would switch it to dark — we avoid that on the share page.
+          The wrapper_ribbon_tied_base.glb is always pre-tied so it looks complete. */}
       <div
-        className="fixed inset-0 opacity-10 pointer-events-none"
+        className="w-full max-w-md flex-shrink-0"
         style={{
-          backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.07) 1px, transparent 1px)`,
-          backgroundSize: '40px 40px',
+          height: 'min(62vh, 520px)',
+          minHeight: '340px',
+          backgroundColor: IVORY,
         }}
-      />
+      >
+        <BouquetScene3D
+          selectedRoseColor={roseColor}
+          wrapperState="wrapped"
+          autoRotate={true}
+        />
+      </div>
 
-      <div className="relative w-full max-w-sm">
-        {data.recipientName && (
-          <p className="text-[10px] text-white/25 tracking-widest uppercase mb-1.5 text-center">For</p>
-        )}
-        {data.recipientName && (
-          <h1 className="text-xl font-light text-cream text-center mb-6">{data.recipientName}</h1>
-        )}
+      {/* ── Rose label ── */}
+      <p className="text-[10px] text-black/28 tracking-widest uppercase mt-1 mb-3 font-light">
+        {COLOR_NAME[roseColor]} 장미 · 블랙 리본 포장
+      </p>
 
-        {/* Bouquet canvas */}
-        <div className="relative w-full bg-black/20 border border-white/[0.06] mb-5 overflow-hidden"
-             style={{ height: '320px' }}>
-          {/* Ambient glow */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: `radial-gradient(ellipse at 50% 60%, ${wrapper.paperColor}12 0%, transparent 65%)`,
-            }}
-          />
-
-          {/* Wrapper */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none">
-            <BouquetWrapper wrapper={wrapper} width={196} height={216} />
-          </div>
-
-          {/* Roses */}
-          {sortedRoses.map((rose) => {
-            const roseType = ROSES.find((r) => r.id === rose.roseTypeId);
-            if (!roseType) return null;
-            return (
-              <div
-                key={rose.id}
-                className="absolute pointer-events-none"
-                style={{
-                  left: `${rose.x}%`,
-                  top: `${rose.y}%`,
-                  transform: `translate(-50%, -50%) scale(${rose.scale}) rotate(${rose.rotation}deg)`,
-                  zIndex: rose.zIndex,
-                  filter: `drop-shadow(0 2px 8px rgba(0,0,0,0.5))`,
-                }}
-              >
-                <RoseObject roseType={roseType} size={60} />
-              </div>
-            );
-          })}
-        </div>
-
-        {data.message && (
-          <div className="border border-white/[0.07] px-4 py-3 mb-4 text-center">
-            <p className="text-[12px] text-white/40 italic leading-relaxed">&ldquo;{data.message}&rdquo;</p>
-          </div>
-        )}
-
-        {data.senderName && (
-          <p className="text-[11px] text-white/25 text-center mb-6">— {data.senderName}</p>
-        )}
-
-        <div className="flex flex-col items-center gap-3">
-          <Link
-            href="/"
-            className="px-6 py-2.5 bg-[#F0EDE8] text-[#0A0A0A] text-[12px] font-semibold hover:bg-white transition-colors rounded-sm"
-          >
-            나도 꽃다발 만들기 →
-          </Link>
-          <p className="text-[10px] text-white/15 tracking-wider">ANDZ · 성년의 날</p>
+      {/* ── Message card ── */}
+      <div className="w-full max-w-md px-6 mb-3">
+        <div
+          className="px-5 py-5 text-center"
+          style={{
+            backgroundColor: '#FFFFFF',
+            border: '1px solid rgba(0,0,0,0.07)',
+          }}
+        >
+          <p className="text-[13px] text-black/55 italic leading-relaxed font-light">
+            &ldquo;{message}&rdquo;
+          </p>
+          {senderName && (
+            <p className="mt-3 text-[11px] text-black/30 tracking-wide">
+              — {senderName}
+            </p>
+          )}
         </div>
       </div>
+
+      {/* ── CTA ── */}
+      <div className="w-full max-w-md px-6 pb-12 flex flex-col items-center gap-3">
+        <Link
+          href="/"
+          className="w-full py-3.5 text-center rounded-sm text-[13px] font-semibold transition-colors hover:bg-black"
+          style={{ backgroundColor: '#111110', color: '#FFFFFF' }}
+        >
+          나도 꽃다발 만들기 →
+        </Link>
+        <p className="text-[10px] text-black/20 tracking-wider font-light">
+          ANDZ · 성년의 날
+        </p>
+      </div>
+
+    </div>
+  );
+}
+
+// Fallback shown while useSearchParams resolves
+function LoadingFallback() {
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ backgroundColor: IVORY }}
+    >
+      <p className="text-[13px] text-black/30 font-light">꽃다발을 불러오는 중…</p>
     </div>
   );
 }
 
 export default function SharePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#080808] flex items-center justify-center">
-        <div className="text-gray-600 text-sm">Loading bouquet…</div>
-      </div>
-    }>
+    <Suspense fallback={<LoadingFallback />}>
       <ShareView />
     </Suspense>
   );
